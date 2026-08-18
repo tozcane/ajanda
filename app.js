@@ -2,6 +2,7 @@
 let diaryData = {};
 let currentDate = new Date();
 let isFlipping = false;
+let currentLayout = '2';
 
 // DOM ELEMENTS
 const themeToggle = document.getElementById('theme-toggle');
@@ -77,6 +78,19 @@ function init() {
     const style = e.target.value;
     notebook.setAttribute('data-style', style);
     localStorage.setItem('page-style', style);
+  });
+
+  // Setup Page Layout Selector
+  const pageLayoutSelect = document.getElementById('page-layout-select');
+  const savedLayout = localStorage.getItem('page-layout') || '2';
+  currentLayout = savedLayout;
+  pageLayoutSelect.value = savedLayout;
+  notebook.setAttribute('data-layout', savedLayout);
+
+  pageLayoutSelect.addEventListener('change', (e) => {
+    currentLayout = e.target.value;
+    localStorage.setItem('page-layout', currentLayout);
+    renderSpread();
   });
 
   // 6. Setup Çizim Modu / iPad Stylus Drawing
@@ -379,26 +393,72 @@ function calculateSpreadDates(date) {
 
 // MAIN RENDERING ENGINE
 function renderSpread(date = currentDate) {
-  const { leftDate, rightDate1, rightDate2 } = calculateSpreadDates(date);
+  notebook.setAttribute('data-layout', currentLayout);
 
-  // 1. Render Left Page
-  leftPageContent.innerHTML = generatePageHTML(leftDate, false);
+  if (currentLayout === '1') {
+    // 1. Single Day View Mode
+    leftPageContent.innerHTML = generatePageHTML(date, false, 14);
+    rightPageContent.innerHTML = '';
+  }
+  else if (currentLayout === '2') {
+    // 2. Classic Double Page Spread
+    const { leftDate, rightDate1, rightDate2 } = calculateSpreadDates(date);
+    
+    leftPageContent.innerHTML = generatePageHTML(leftDate, false);
+    if (rightDate2) {
+      rightPageContent.innerHTML = generateWeekendSplitPageHTML(rightDate1, rightDate2);
+    } else {
+      rightPageContent.innerHTML = generatePageHTML(rightDate1, false);
+    }
+  }
+  else if (currentLayout === '4') {
+    // 3. 4-Day Grid View Mode
+    const d1 = new Date(date);
+    const d2 = new Date(date); d2.setDate(d1.getDate() + 1);
+    const d3 = new Date(date); d3.setDate(d1.getDate() + 2);
+    const d4 = new Date(date); d4.setDate(d1.getDate() + 3);
 
-  // 2. Render Right Page (Checks if Weekend Split or Normal Single Day)
-  if (rightDate2) {
-    rightPageContent.innerHTML = generateWeekendSplitPageHTML(rightDate1, rightDate2);
-  } else {
-    rightPageContent.innerHTML = generatePageHTML(rightDate1, false);
+    leftPageContent.innerHTML = generateSplitGridPageHTML(d1, d2);
+    rightPageContent.innerHTML = generateSplitGridPageHTML(d3, d4);
+  }
+  else if (currentLayout === 'weekly') {
+    // 4. Weekly Spread (7 Days on screen)
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+
+    const mon = new Date(startOfWeek);
+    const tue = new Date(startOfWeek); tue.setDate(mon.getDate() + 1);
+    const wed = new Date(startOfWeek); wed.setDate(mon.getDate() + 2);
+    const thu = new Date(startOfWeek); thu.setDate(mon.getDate() + 3);
+    const fri = new Date(startOfWeek); fri.setDate(mon.getDate() + 4);
+    const sat = new Date(startOfWeek); sat.setDate(mon.getDate() + 5);
+    const sun = new Date(startOfWeek); sun.setDate(mon.getDate() + 6);
+
+    leftPageContent.innerHTML = generateTripleSplitPageHTML(mon, tue, wed);
+    rightPageContent.innerHTML = generateQuadSplitPageHTML(thu, fri, sat, sun);
   }
 
   // Bind Input Listeners on Left & Right inputs for saving
   bindInputListeners();
 
-  // 3. Render Bottom Mini Calendars
-  renderMiniCalendars(leftDate);
+  // Get base date for mini calendars
+  let miniCalBaseDate = date;
+  if (currentLayout === '2') {
+    const { leftDate } = calculateSpreadDates(date);
+    miniCalBaseDate = leftDate;
+  } else if (currentLayout === 'weekly') {
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    miniCalBaseDate = startOfWeek;
+  }
+  renderMiniCalendars(miniCalBaseDate);
 
-  // 4. Highlight active month tab
-  const activeMonth = leftDate.getMonth();
+  // Highlight active month tab
+  const activeMonth = date.getMonth();
   tabBtns.forEach(btn => {
     if (parseInt(btn.dataset.month) === activeMonth) {
       btn.classList.add('active');
@@ -407,14 +467,20 @@ function renderSpread(date = currentDate) {
     }
   });
 
-  // 5. Load Stylus Drawings
+  // Load Stylus Drawings
   loadDrawings();
 }
 
 // PAGE HTML GENERATION (WEEKDAY SINGLE DAY)
-function generatePageHTML(date, isSplitHalf = false) {
+function generatePageHTML(date, isSplitHalf = false, lineCount = null) {
   const headerHTML = generateHeaderHTML(date, isSplitHalf);
-  const linesHTML = generateRuledLinesHTML(date, isSplitHalf ? 7 : 14); // 7 lines for split halves, 14 for full pages
+  
+  let finalLineCount = lineCount;
+  if (finalLineCount === null) {
+    finalLineCount = isSplitHalf ? 7 : 14;
+  }
+
+  const linesHTML = generateRuledLinesHTML(date, finalLineCount);
   return headerHTML + linesHTML;
 }
 
@@ -431,6 +497,55 @@ function generateWeekendSplitPageHTML(satDate, sunDate) {
     </div>
   `;
   return `<div class="weekend-split">${satHTML}${sunHTML}</div>`;
+}
+
+// MULTI-PAGE SPLIT GRID PAGE HTML GENERATIONS
+function generateSplitGridPageHTML(date1, date2) {
+  return `
+    <div class="split-layout-grid-2">
+      <div class="split-half">
+        ${generatePageHTML(date1, true, 6)}
+      </div>
+      <div class="split-half">
+        ${generatePageHTML(date2, true, 6)}
+      </div>
+    </div>
+  `;
+}
+
+function generateTripleSplitPageHTML(date1, date2, date3) {
+  return `
+    <div class="split-layout-grid-3">
+      <div class="split-third">
+        ${generatePageHTML(date1, true, 4)}
+      </div>
+      <div class="split-third">
+        ${generatePageHTML(date2, true, 4)}
+      </div>
+      <div class="split-third">
+        ${generatePageHTML(date3, true, 4)}
+      </div>
+    </div>
+  `;
+}
+
+function generateQuadSplitPageHTML(date1, date2, date3, date4) {
+  return `
+    <div class="split-layout-grid-4">
+      <div class="split-fourth">
+        ${generatePageHTML(date1, true, 3)}
+      </div>
+      <div class="split-fourth">
+        ${generatePageHTML(date2, true, 3)}
+      </div>
+      <div class="split-fourth">
+        ${generatePageHTML(date3, true, 3)}
+      </div>
+      <div class="split-fourth">
+        ${generatePageHTML(date4, true, 3)}
+      </div>
+    </div>
+  `;
 }
 
 // HEADER FORMATTER (MATCHES PHOTO HEADERS WITH LANGUAGES)
@@ -594,7 +709,18 @@ function changeSpread(offset) {
   saveCurrentInputs();
 
   const nextDate = new Date(currentDate);
-  nextDate.setDate(currentDate.getDate() + offset);
+  let daysOffset = offset;
+  if (currentLayout === '1') {
+    daysOffset = offset > 0 ? 1 : -1;
+  } else if (currentLayout === '2') {
+    daysOffset = offset;
+  } else if (currentLayout === '4') {
+    daysOffset = offset > 0 ? 4 : -4;
+  } else if (currentLayout === 'weekly') {
+    daysOffset = offset > 0 ? 7 : -7;
+  }
+
+  nextDate.setDate(currentDate.getDate() + daysOffset);
 
   const isForward = offset > 0;
   triggerFlipAnimation(isForward, nextDate);
@@ -622,8 +748,8 @@ function goToMonth(monthIndex) {
 
 // 3D PAGE FLIP TRIGGER
 function triggerFlipAnimation(isForward, nextDate) {
-  // Mobile check: skip 3D animation to prevent glitches on narrow viewports
-  if (window.innerWidth <= 900) {
+  // Mobile check or multi-page layouts: skip 3D flip animation to prevent visual distortion
+  if (currentLayout !== '2' || window.innerWidth <= 900) {
     currentDate = nextDate;
     renderSpread();
     return;
@@ -733,6 +859,40 @@ let currentTool = 'pen';
 let currentInkColor = 'black';
 let globalUndoStack = [];
 
+function getSpreadDrawingKeys(date) {
+  let leftKey, rightKey;
+  
+  if (currentLayout === '1') {
+    leftKey = formatDateString(date);
+    rightKey = 'dummy';
+  }
+  else if (currentLayout === '2') {
+    const { leftDate, rightDate1 } = calculateSpreadDates(date);
+    leftKey = formatDateString(leftDate);
+    rightKey = formatDateString(rightDate1);
+  }
+  else if (currentLayout === '4') {
+    const d1 = new Date(date);
+    const d3 = new Date(date); d3.setDate(d1.getDate() + 2);
+    leftKey = formatDateString(d1);
+    rightKey = formatDateString(d3);
+  }
+  else if (currentLayout === 'weekly') {
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+
+    const mon = new Date(startOfWeek);
+    const thu = new Date(startOfWeek); thu.setDate(mon.getDate() + 3);
+    
+    leftKey = formatDateString(mon);
+    rightKey = formatDateString(thu);
+  }
+  
+  return { leftKey, rightKey };
+}
+
 function setupCanvasDrawing(canvas) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -744,7 +904,8 @@ function setupCanvasDrawing(canvas) {
 
   function start(e) {
     const isPen = e.pointerType === 'pen';
-    if (!isDrawingMode && !isPen) return; // Automatic drawing enabled for Stylus!
+    const isEraser = e.pointerType === 'eraser';
+    if (!isDrawingMode && !isPen && !isEraser) return;
     
     isDrawing = true;
     
@@ -769,7 +930,8 @@ function setupCanvasDrawing(canvas) {
   function draw(e) {
     if (!isDrawing) return;
     const isPen = e.pointerType === 'pen';
-    if (!isDrawingMode && !isPen) return;
+    const isEraser = e.pointerType === 'eraser';
+    if (!isDrawingMode && !isPen && !isEraser) return;
     
     e.preventDefault(); // Stop iPad scrolling/scuff gestures while drawing
     const rect = canvas.getBoundingClientRect();
@@ -781,10 +943,14 @@ function setupCanvasDrawing(canvas) {
     
     const currentTheme = document.documentElement.getAttribute('data-theme');
     
-    if (currentTool === 'eraser') {
+    // Auto-detect stylus eraser hardware
+    const isStylusEraser = isEraser || (isPen && (e.buttons & 32 || e.button === 5));
+    const activeTool = isStylusEraser ? 'eraser' : currentTool;
+
+    if (activeTool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = 18;
-    } else if (currentTool === 'highlighter') {
+      ctx.lineWidth = 22;
+    } else if (activeTool === 'highlighter') {
       ctx.globalCompositeOperation = 'multiply';
       ctx.strokeStyle = 'rgba(254, 226, 167, 0.45)'; // Semi-transparent yellow
       ctx.lineWidth = 14;
@@ -817,7 +983,8 @@ function setupCanvasDrawing(canvas) {
   // Pointerdown listens on pageInner to detect Apple Pencil vs Touch
   pageInner.addEventListener('pointerdown', (e) => {
     const isPen = e.pointerType === 'pen';
-    if (isPen || isDrawingMode) {
+    const isEraser = e.pointerType === 'eraser';
+    if (isPen || isEraser || isDrawingMode) {
       // Find where pointerdown occurred relative to canvas bounds
       const rect = canvas.getBoundingClientRect();
       if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
@@ -878,9 +1045,7 @@ function resizeCanvases() {
 }
 
 function saveDrawings() {
-  const { leftDate, rightDate1 } = calculateSpreadDates(currentDate);
-  const leftDateStr = formatDateString(leftDate);
-  const rightDateStr = formatDateString(rightDate1);
+  const { leftKey, rightKey } = getSpreadDrawingKeys(currentDate);
 
   const leftCanvas = document.getElementById('left-canvas');
   const rightCanvas = document.getElementById('right-canvas');
@@ -894,27 +1059,27 @@ function saveDrawings() {
     return !buffer.some(color => color !== 0);
   }
 
-  if (!diaryData[leftDateStr]) diaryData[leftDateStr] = {};
+  if (!diaryData[leftKey]) diaryData[leftKey] = {};
   if (!isCanvasBlank(leftCanvas)) {
-    diaryData[leftDateStr].drawing = leftCanvas.toDataURL();
+    diaryData[leftKey].drawing = leftCanvas.toDataURL();
   } else {
-    delete diaryData[leftDateStr].drawing;
+    delete diaryData[leftKey].drawing;
   }
 
-  if (!diaryData[rightDateStr]) diaryData[rightDateStr] = {};
-  if (!isCanvasBlank(rightCanvas)) {
-    diaryData[rightDateStr].drawing = rightCanvas.toDataURL();
-  } else {
-    delete diaryData[rightDateStr].drawing;
+  if (currentLayout !== '1') {
+    if (!diaryData[rightKey]) diaryData[rightKey] = {};
+    if (!isCanvasBlank(rightCanvas)) {
+      diaryData[rightKey].drawing = rightCanvas.toDataURL();
+    } else {
+      delete diaryData[rightKey].drawing;
+    }
   }
 
   localStorage.setItem('classic-notebook-db', JSON.stringify(diaryData));
 }
 
 function loadDrawings() {
-  const { leftDate, rightDate1 } = calculateSpreadDates(currentDate);
-  const leftDateStr = formatDateString(leftDate);
-  const rightDateStr = formatDateString(rightDate1);
+  const { leftKey, rightKey } = getSpreadDrawingKeys(currentDate);
 
   const leftCanvas = document.getElementById('left-canvas');
   const rightCanvas = document.getElementById('right-canvas');
@@ -929,26 +1094,31 @@ function loadDrawings() {
 
   leftCanvas.width = lRect.width * dpr;
   leftCanvas.height = lRect.height * dpr;
-  rightCanvas.width = rRect.width * dpr;
-  rightCanvas.height = rRect.height * dpr;
+  
+  if (currentLayout !== '1') {
+    rightCanvas.width = rRect.width * dpr;
+    rightCanvas.height = rRect.height * dpr;
+  }
 
   leftCtx.clearRect(0, 0, leftCanvas.width, leftCanvas.height);
-  rightCtx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
+  if (currentLayout !== '1') {
+    rightCtx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
+  }
 
-  if (diaryData[leftDateStr] && diaryData[leftDateStr].drawing) {
+  if (diaryData[leftKey] && diaryData[leftKey].drawing) {
     const img = new Image();
     img.onload = () => {
       leftCtx.drawImage(img, 0, 0, leftCanvas.width, leftCanvas.height);
     };
-    img.src = diaryData[leftDateStr].drawing;
+    img.src = diaryData[leftKey].drawing;
   }
 
-  if (diaryData[rightDateStr] && diaryData[rightDateStr].drawing) {
+  if (currentLayout !== '1' && diaryData[rightKey] && diaryData[rightKey].drawing) {
     const img = new Image();
     img.onload = () => {
       rightCtx.drawImage(img, 0, 0, rightCanvas.width, rightCanvas.height);
     };
-    img.src = diaryData[rightDateStr].drawing;
+    img.src = diaryData[rightKey].drawing;
   }
 }
 
