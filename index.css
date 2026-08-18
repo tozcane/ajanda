@@ -330,6 +330,7 @@ html[data-theme="light"] .moon-icon { display: block; }
   width: 100%;
   height: 100%;
   padding: 0 10px 0 68px; /* Starts to the right of the vertical red margin line */
+  pointer-events: none; /* Block stylus pen from interacting by default */
 }
 
 .line-input::placeholder {

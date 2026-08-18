@@ -629,25 +629,31 @@ function bindInputListeners() {
   const containers = document.querySelectorAll('.ruled-lines-container');
   containers.forEach(container => {
     const dateStr = container.dataset.date;
+    
+    // Listen for input changes and blur
     const inputs = container.querySelectorAll('.line-input');
     inputs.forEach(input => {
-      // 1. Text input save on change
       input.addEventListener('input', debounce(() => saveInputData(dateStr), 400));
+      
+      input.addEventListener('blur', () => {
+        input.style.pointerEvents = 'none';
+        input.setAttribute('readonly', 'true');
+      });
+    });
 
-      // 2. Toggle readonly on finger/mouse touch to allow typing
-      input.addEventListener('pointerdown', (e) => {
+    // Listen on rows for finger/mouse touches (since inputs have pointer-events: none)
+    const rows = container.querySelectorAll('.ruled-line-row');
+    rows.forEach(row => {
+      row.addEventListener('pointerdown', (e) => {
         const isPen = e.pointerType === 'pen' || e.pointerType === 'eraser';
         if (!isPen && !isDrawingMode) {
-          input.removeAttribute('readonly');
-          input.focus();
-        } else {
-          e.preventDefault();
+          const input = row.querySelector('.line-input');
+          if (input) {
+            input.style.pointerEvents = 'auto';
+            input.removeAttribute('readonly');
+            input.focus();
+          }
         }
-      });
-
-      // 3. Re-enable readonly on blur to prevent stylus focus misclicks
-      input.addEventListener('blur', () => {
-        input.setAttribute('readonly', 'true');
       });
     });
   });
