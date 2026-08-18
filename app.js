@@ -99,6 +99,14 @@ function init() {
   setupCanvasDrawing(document.getElementById('left-canvas'));
   setupCanvasDrawing(document.getElementById('right-canvas'));
 
+  // Prevent stylus from focusing text inputs to bypass iPadOS Scribble text conversion
+  notebook.addEventListener('pointerdown', (e) => {
+    const isPen = e.pointerType === 'pen' || e.pointerType === 'eraser';
+    if ((isPen || isDrawingMode) && e.target.classList.contains('line-input')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   // Color Tools Selectors
   const colorBtns = document.querySelectorAll('.color-btn');
   colorBtns.forEach(btn => {
