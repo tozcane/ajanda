@@ -1,0 +1,881 @@
+/* DESIGN CONSTANTS & CONFIGURATION */
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  --transition-page: transform 0.65s cubic-bezier(0.645, 0.045, 0.355, 1);
+  --transition-normal: all 0.25s ease-in-out;
+  --transition-fast: all 0.15s ease;
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 16px;
+}
+
+/* DARK MODE - COZY DESK SURFACE */
+html[data-theme="dark"] {
+  --desk-bg: radial-gradient(circle, #2c1e18 0%, #150f0c 100%);
+  --leather-cover: linear-gradient(135deg, #1b1b1f, #0c0c0e); /* Matte black leather */
+  --leather-border: #222226;
+  --paper-bg: #f9f5eb; /* Vintage cream paper */
+  --paper-text: #2c251c; /* Vintage dark charcoal ink */
+  --paper-text-muted: #8c8273;
+  --paper-lines: rgba(165, 145, 115, 0.28);
+  --paper-margin: rgba(220, 100, 100, 0.4);
+  
+  --header-bg: #1e1b18;
+  --header-text: #eae6e2;
+  --header-border: #2d2824;
+  
+  --tab-bg: #2d2824;
+  --tab-text: #b8b0a8;
+  --tab-active-bg: #f9f5eb;
+  
+  --sew-light: rgba(255,255,255,0.06);
+  --sew-dark: rgba(0,0,0,0.35);
+  --shadow-notebook: 0 25px 60px rgba(0, 0, 0, 0.75), inset 0 0 80px rgba(0, 0, 0, 0.3);
+  --shadow-page: -2px 4px 12px rgba(0, 0, 0, 0.18);
+  
+  color-scheme: dark;
+}
+
+/* LIGHT MODE - BRIGHT OAK DESK SURFACE */
+html[data-theme="light"] {
+  --desk-bg: radial-gradient(circle, #ecdcc8 0%, #caab8d 100%);
+  --leather-cover: linear-gradient(135deg, #1b1b1f, #0c0c0e); /* Matte black leather */
+  --leather-border: #222226;
+  --paper-bg: #fdfcf7; /* Clean ivory paper */
+  --paper-text: #34495e; /* Elegant slate blue ink */
+  --paper-text-muted: #7f8c8d;
+  --paper-lines: rgba(189, 195, 199, 0.45);
+  --paper-margin: rgba(231, 76, 60, 0.45);
+  
+  --header-bg: #ffffff;
+  --header-text: #2c3e50;
+  --header-border: #e8dfd3;
+  
+  --tab-bg: #decbb7;
+  --tab-text: #5d4037;
+  --tab-active-bg: #fdfcf7;
+  
+  --sew-light: rgba(255,255,255,0.15);
+  --sew-dark: rgba(0,0,0,0.2);
+  --shadow-notebook: 0 25px 50px rgba(78, 43, 27, 0.25), inset 0 0 50px rgba(0,0,0,0.05);
+  --shadow-page: -2px 4px 10px rgba(0,0,0,0.08);
+  
+  color-scheme: light;
+}
+
+/* SYSTEM RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--desk-bg);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* APP HEADER */
+.app-header {
+  height: 64px;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--header-text);
+}
+
+.header-logo h1 {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.header-logo svg {
+  color: #c36e4b;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.live-date {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--header-text);
+  opacity: 0.8;
+}
+
+.circle-btn {
+  background: none;
+  border: 1px solid var(--header-border);
+  color: var(--header-text);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--border-radius-round);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-normal);
+}
+
+.circle-btn:hover {
+  background-color: var(--header-border);
+  transform: scale(1.05);
+}
+
+/* Icon visibility selectors */
+html[data-theme="dark"] .sun-icon { display: block; }
+html[data-theme="dark"] .moon-icon { display: none; }
+html[data-theme="light"] .sun-icon { display: none; }
+html[data-theme="light"] .moon-icon { display: block; }
+
+/* MAIN WORKSPACE */
+.workspace {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px 20px 24px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* NOTEBOOK CONTAINER */
+.notebook-container {
+  display: flex;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1800px; /* Crucial for 3D page flip */
+}
+
+/* LEATHER COVER WRAP */
+.notebook-leather-wrap {
+  flex-grow: 1;
+  background: var(--leather-cover);
+  border: 2px solid var(--leather-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-notebook);
+  padding: 10px;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+/* DEFTER GÖVDESİ */
+.notebook {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: relative;
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+/* DIKİŞLİ CİLT OMURGASI (CENTRAL SEAM SPINE) */
+.notebook-spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: linear-gradient(to right, rgba(0,0,0,0.18), rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.18));
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Sewing line dashes */
+.sewing-line {
+  height: 100%;
+  width: 0px;
+  border-left: 1.5px dashed var(--sew-light);
+  border-right: 1.5px dashed var(--sew-dark);
+}
+
+/* PAPER PAGES STYLING (LEFT & RIGHT) */
+.page {
+  width: 50%;
+  height: 100%;
+  background-color: var(--paper-bg);
+  color: var(--paper-text);
+  box-shadow: var(--shadow-page);
+  position: relative;
+  overflow: hidden;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  transition: var(--transition-page);
+}
+
+.page-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 28px 36px 16px 36px;
+}
+
+/* Left/Right Paper line textures */
+.page-left {
+  border-radius: var(--border-radius-md) 0 0 var(--border-radius-md);
+}
+
+.page-right {
+  border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+}
+
+/* MAIN CONTENT AREA IN PAGES */
+.page-main-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+
+/* DATE HEADINGS (PLAYFAIR DISPLAY SERIF) */
+.day-date-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid var(--paper-text);
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+}
+
+.day-num {
+  font-family: var(--font-serif);
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 0.85;
+  color: var(--paper-text);
+}
+
+.day-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.day-name-tr {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--paper-text);
+}
+
+.day-langs {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--paper-text-muted);
+  text-transform: capitalize;
+  margin-top: 1px;
+}
+
+/* RULED WRITING GRID */
+.ruled-lines-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.ruled-line-row {
+  display: flex;
+  align-items: center;
+  height: 28px; /* Ruled spacing */
+  line-height: 28px;
+  border-bottom: none;
+  position: relative;
+}
+
+.ruled-line-row:last-child {
+  border-bottom: none;
+}
+
+.line-hour {
+  display: none;
+}
+
+.line-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--paper-text);
+  width: 100%;
+  height: 100%;
+  padding: 0 10px 0 68px; /* Starts to the right of the vertical red margin line */
+}
+
+.line-input::placeholder {
+  color: rgba(0,0,0,0.18);
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+/* WEEKEND SPLIT LAYOUT (SATURDAY & SUNDAY STACKED) */
+.weekend-split {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.weekend-split-half {
+  height: 50%;
+  position: relative;
+  overflow-y: auto;
+}
+
+.weekend-split-half:first-child {
+  border-bottom: 2px solid var(--paper-text);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.weekend-split-half .day-num {
+  font-size: 2.5rem;
+}
+
+/* MINI CALENDARS IN FOOTER */
+.page-footer {
+  height: 100px;
+  border-top: 1.5px solid var(--paper-lines);
+  padding-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.mini-calendar-container {
+  width: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-calendar-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--paper-text-muted);
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.mini-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.55rem;
+  row-gap: 2px;
+}
+
+.mini-day {
+  color: var(--paper-text-muted);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 1px 0;
+  border-radius: 2px;
+  transition: var(--transition-fast);
+}
+
+.mini-day:hover {
+  background-color: rgba(0,0,0,0.08);
+  color: var(--paper-text);
+}
+
+.mini-day.header {
+  font-weight: 700;
+  color: var(--paper-text);
+  cursor: default;
+  pointer-events: none;
+}
+
+.mini-day.today {
+  background-color: var(--paper-text);
+  color: var(--paper-bg);
+  font-weight: 700;
+}
+
+.mini-day.other-month {
+  opacity: 0.25;
+}
+
+/* MONTH INDEX TABS (RIGHT SIDE) */
+.notebook-tabs {
+  position: absolute;
+  right: -36px;
+  top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 5;
+}
+
+.tab-btn {
+  background-color: var(--tab-bg);
+  border: 1px solid var(--header-border);
+  border-left: none;
+  color: var(--tab-text);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 8px 6px 8px 10px;
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+  cursor: pointer;
+  width: 38px;
+  text-align: left;
+  transition: var(--transition-fast);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.15);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.tab-btn:hover {
+  transform: translateX(4px);
+  background-color: var(--tab-active-border);
+}
+
+.tab-btn.active {
+  transform: translateX(6px);
+  background-color: var(--tab-active-bg);
+  color: var(--paper-text);
+  border-color: var(--header-border);
+  border-left: 1px solid var(--paper-bg);
+  z-index: 10;
+  box-shadow: 4px 2px 10px rgba(0,0,0,0.15);
+}
+
+/* Stagger colors for tabs */
+.tab-btn:nth-child(1) { border-right: 3px solid #ff7675; }
+.tab-btn:nth-child(2) { border-right: 3px solid #74b9ff; }
+.tab-btn:nth-child(3) { border-right: 3px solid #55efc4; }
+.tab-btn:nth-child(4) { border-right: 3px solid #ffeaa7; }
+.tab-btn:nth-child(5) { border-right: 3px solid #a29bfe; }
+.tab-btn:nth-child(6) { border-right: 3px solid #fd79a8; }
+.tab-btn:nth-child(7) { border-right: 3px solid #fab1a0; }
+.tab-btn:nth-child(8) { border-right: 3px solid #00cec9; }
+.tab-btn:nth-child(9) { border-right: 3px solid #0984e3; }
+.tab-btn:nth-child(10) { border-right: 3px solid #6c5ce7; }
+.tab-btn:nth-child(11) { border-right: 3px solid #e17055; }
+.tab-btn:nth-child(12) { border-right: 3px solid #2ecc71; }
+
+/* 3D PAGE FLIP TRANSITIONS */
+.page-flipping {
+  position: absolute;
+  right: 10px; /* Placed exactly over the right page slot */
+  width: calc(50% - 10px);
+  height: calc(100% - 20px);
+  z-index: 40;
+  pointer-events: none;
+  display: none;
+  transform-style: preserve-3d;
+  box-shadow: none;
+  border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+  transform-origin: left center;
+}
+
+.page-content-front,
+.page-content-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  background-color: var(--paper-bg);
+  box-shadow: var(--shadow-page);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 36px 16px 36px;
+}
+
+.page-content-front {
+  border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+  z-index: 2;
+  transform: rotateY(0deg);
+  background-image: 
+    linear-gradient(90deg, transparent 58px, var(--paper-margin) 58px, var(--paper-margin) 60px, transparent 60px),
+    linear-gradient(var(--paper-lines) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 28px;
+  background-position: 0 0, 0 16px;
+}
+
+.page-content-back {
+  border-radius: var(--border-radius-md) 0 0 var(--border-radius-md);
+  transform: rotateY(180deg);
+  background-image: 
+    linear-gradient(90deg, transparent 58px, var(--paper-margin) 58px, var(--paper-margin) 60px, transparent 60px),
+    linear-gradient(var(--paper-lines) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 28px;
+  background-position: 0 0, 0 16px;
+}
+
+/* Flip action triggers */
+.flip-forward {
+  animation: flipForwardAction 0.65s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+}
+
+.flip-backward {
+  animation: flipBackwardAction 0.65s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+}
+
+@keyframes flipForwardAction {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+
+@keyframes flipBackwardAction {
+  0% {
+    transform: rotateY(-180deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* BOTTOM NAVIGATION CONTROLS */
+.navigation-controls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 24px;
+  z-index: 10;
+}
+
+.nav-btn {
+  background-color: var(--header-bg);
+  border: 1px solid var(--header-border);
+  color: var(--header-text);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-normal);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.nav-btn:hover {
+  background-color: var(--header-border);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+}
+
+.nav-btn:active {
+  transform: translateY(0);
+}
+
+.today-btn {
+  background-color: #a7502a;
+  color: #fff;
+  border-color: #a7502a;
+}
+
+.today-btn:hover {
+  background-color: #c36e4b;
+  border-color: #c36e4b;
+}
+
+/* MOBILE RESPONSIVE LAYOUT */
+@media (max-width: 900px) {
+  body {
+    overflow-y: auto;
+  }
+  
+  .workspace {
+    padding: 12px;
+    height: auto;
+    justify-content: flex-start;
+  }
+  
+  .notebook-container {
+    height: auto;
+    max-width: 500px;
+    flex-direction: column;
+  }
+  
+  .notebook-leather-wrap {
+    height: auto;
+    padding: 6px;
+  }
+  
+  .notebook {
+    flex-direction: column;
+    height: auto;
+    gap: 16px;
+    padding: 0;
+  }
+  
+  .notebook-spine {
+    display: none; /* Spine hides on vertical stack */
+  }
+  
+  .page {
+    width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-md) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .page-inner {
+    padding: 20px 24px;
+  }
+  
+  .notebook-tabs {
+    position: relative;
+    right: 0;
+    top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+    width: 100%;
+  }
+  
+  .tab-btn {
+    writing-mode: horizontal-tb;
+    width: auto;
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm);
+    border-right: none;
+    border-bottom: 2px solid transparent;
+  }
+  
+  .tab-btn.active {
+    transform: translateY(-2px);
+    border-bottom-color: var(--paper-text);
+  }
+  
+  .page-flipping {
+    display: none !important; /* No 3D flip animation on single-page mobile */
+  }
+}
+
+/* SELECTOR UI IN HEADER */
+.style-select-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--header-text);
+  opacity: 0.7;
+  letter-spacing: 0.5px;
+}
+
+.header-select {
+  background-color: var(--header-border);
+  border: 1px solid var(--header-border);
+  color: var(--header-text);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-md);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.header-select:hover {
+  background-color: var(--tab-bg);
+}
+
+/* DYNAMIC PAGE BACKGROUND PATTERNS */
+/* The vertical red line runs down the entire page wrapper */
+.page, .page-content-front, .page-content-back {
+  background-color: var(--paper-bg);
+  background-image: linear-gradient(90deg, transparent 58px, var(--paper-margin) 58px, var(--paper-margin) 60px, transparent 60px);
+  background-size: 100% 100%;
+  background-position: 0 0;
+}
+
+/* 1. Ruled Style (Çizgili) - Horizontal lines restricted to writing area only */
+#notebook[data-style="ruled"] .page-main-content,
+#notebook[data-style="ruled"] #flip-front-content,
+#notebook[data-style="ruled"] #flip-back-content {
+  background-image: linear-gradient(rgba(9, 132, 227, 0.18) 1px, transparent 1px);
+  background-size: 100% 28px;
+  background-position: 0 16px;
+}
+
+/* 2. Dotted Style (Noktalı) - Restricted to writing area only */
+#notebook[data-style="dotted"] .page-main-content,
+#notebook[data-style="dotted"] #flip-front-content,
+#notebook[data-style="dotted"] #flip-back-content {
+  background-image: radial-gradient(var(--paper-lines) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  background-position: 58px 16px;
+}
+
+/* 3. Grid Style (Kareli) - Grid restricted to writing area only, starts after red margin */
+#notebook[data-style="grid"] .page-main-content,
+#notebook[data-style="grid"] #flip-front-content,
+#notebook[data-style="grid"] #flip-back-content {
+  background-image: 
+    linear-gradient(var(--paper-lines) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-lines) 1px, transparent 1px);
+  background-size: 100% 28px, 28px 100%;
+  background-position: 0 16px, 58px 0;
+}
+
+/* 4. Blank Style (Düz) - Clean writing area */
+#notebook[data-style="blank"] .page-main-content,
+#notebook[data-style="blank"] #flip-front-content,
+#notebook[data-style="blank"] #flip-back-content {
+  background-image: none;
+}
+
+/* STYLUS & DRAWING TUVAL OVERLAY */
+.page-inner {
+  position: relative; /* Keep canvas overlay contained exactly to page boundaries */
+}
+
+.drawing-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 15; /* Sits above text inputs */
+  pointer-events: none; /* Let inputs receive clicks when not in drawing mode */
+  background: transparent;
+  display: block;
+}
+
+/* Pen Mode active state styles */
+#notebook.drawing-mode .drawing-canvas {
+  pointer-events: auto; /* Capture touch/pen strokes */
+  cursor: crosshair;
+}
+
+/* Disable hover/focus effects on text inputs while drawing to prevent stylus mis-clicks */
+#notebook.drawing-mode .line-input {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Highlight draw button when active */
+.circle-btn.active {
+  background-color: #a7502a;
+  color: #fff;
+  border-color: #a7502a;
+}
+
+/* DRAWING TOOLS PANEL */
+.drawing-tools-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--header-border);
+  padding: 3px 10px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--header-border);
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colors-group {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 10px;
+}
+
+/* Color select dot buttons */
+.color-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--border-radius-round);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  padding: 0;
+  display: block;
+}
+
+.color-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-btn.active {
+  border-color: var(--header-text);
+  box-shadow: 0 0 0 1px var(--header-border);
+}
+
+/* Icon tools (Highlighter, Eraser) */
+.tool-icon-btn {
+  background: none;
+  border: 1.5px solid transparent;
+  color: var(--header-text);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-normal);
+  padding: 0;
+}
+
+.tool-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tool-icon-btn.active {
+  background-color: #a7502a;
+  border-color: #a7502a;
+  color: #fff;
+}
+
+.highlighter-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: block;
+}
+
+.tool-icon-btn.active .highlighter-dot {
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+}

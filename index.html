@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajanda Defterim</title>
+  <!-- Google Fonts - Inter for UI & Playfair Display for book headers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <!-- AYAR KONTROLLERİ (ÜST BAR) -->
+  <header class="app-header">
+    <div class="header-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      <h1>Ajanda Defterim</h1>
+    </div>
+    
+    <div class="header-controls">
+      <!-- Sayfa Düzeni Seçimi -->
+      <div class="style-select-container">
+        <label for="page-style-select" class="header-label">Sayfa Türü:</label>
+        <select id="page-style-select" class="header-select">
+          <option value="ruled" selected>Çizgili</option>
+          <option value="dotted">Noktalı</option>
+          <option value="grid">Kareli</option>
+          <option value="blank">Düz</option>
+        </select>
+      </div>
+
+      <!-- Çizim Modu / Araçlar Kontrolü -->
+      <div class="drawing-tools-container">
+        <!-- Kalem Çeşitleri -->
+        <div class="tool-group colors-group">
+          <button class="color-btn active" data-color="black" title="Siyah Kalem" style="background-color: #222;"></button>
+          <button class="color-btn" data-color="blue" title="Mavi Kalem" style="background-color: #0984e3;"></button>
+          <button class="color-btn" data-color="red" title="Kırmızı Kalem" style="background-color: #d63031;"></button>
+          <button class="tool-icon-btn" id="highlighter-btn" title="Fosforlu Kalem">
+            <span class="highlighter-dot" style="background-color: #ffeaa7;"></span>
+          </button>
+          <button class="tool-icon-btn" id="eraser-btn" title="Silgi">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L14 3C14.5 2.5 15.5 2.5 16 3L21 8C21.5 8.5 21.5 9.5 21 10L17 14L20 20Z"></path><path d="M17 14L7 14"></path></svg>
+          </button>
+        </div>
+
+        <!-- Geri Al & Temizle -->
+        <div class="tool-group actions-group">
+          <button id="undo-btn" class="circle-btn" title="Geri Al (Undo)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+          </button>
+          <button id="draw-mode-btn" class="circle-btn" title="Parmak/Fare ile Çizim Modu" style="display:none;"></button>
+          <button id="clear-draw-btn" class="circle-btn" title="Çizimleri Temizle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <span class="live-date" id="live-header-date">18 Ağustos 2026</span>
+      
+      <button id="theme-toggle" class="circle-btn" aria-label="Temayı Değiştir" title="Temayı Değiştir">
+        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <main class="workspace">
+    <div class="notebook-container">
+      
+      <!-- DEFTER KILIFI VE DERİSİ -->
+      <div class="notebook-leather-wrap">
+        <div class="notebook" id="notebook">
+          
+          <!-- Orta Dikişli Cilt/Omurga (Central Sewing Spine) -->
+          <div class="notebook-spine">
+            <div class="sewing-line"></div>
+          </div>
+
+          <!-- SOL SAYFA (LEFT PAGE) -->
+          <div class="page page-left" id="page-left">
+            <div class="page-inner">
+              <!-- Çizim Tuvali -->
+              <canvas class="drawing-canvas" id="left-canvas"></canvas>
+              <!-- Dinamik Günlük İçerik (Başlık + Çizgili Saatler) -->
+              <div class="page-main-content" id="left-page-content">
+                <!-- JS Tarafından Doldurulacak -->
+              </div>
+              
+              <!-- Alt Kısım: Mini Takvim (Mevcut Ay) -->
+              <footer class="page-footer">
+                <div class="mini-calendar-container">
+                  <span class="mini-calendar-title" id="left-mini-title">AĞUSTOS 2026</span>
+                  <div class="mini-calendar-grid" id="left-mini-calendar">
+                    <!-- JS Tarafından Doldurulacak -->
+                  </div>
+                </div>
+              </footer>
+            </div>
+          </div>
+
+          <!-- SAĞ SAYFA (RIGHT PAGE) -->
+          <div class="page page-right" id="page-right">
+            <div class="page-inner">
+              <!-- Çizim Tuvali -->
+              <canvas class="drawing-canvas" id="right-canvas"></canvas>
+              <!-- Dinamik Günlük İçerik (Başlık + Çizgili Saatler / Hafta sonu ise ikiye bölünmüş) -->
+              <div class="page-main-content" id="right-page-content">
+                <!-- JS Tarafından Doldurulacak -->
+              </div>
+              
+              <!-- Alt Kısım: Mini Takvim (Sonraki Ay) -->
+              <footer class="page-footer">
+                <div class="mini-calendar-container">
+                  <span class="mini-calendar-title" id="right-mini-title">EYLÜL 2026</span>
+                  <div class="mini-calendar-grid" id="right-mini-calendar">
+                    <!-- JS Tarafından Doldurulacak -->
+                  </div>
+                </div>
+              </footer>
+            </div>
+          </div>
+
+          <!-- 3D DÖNEN SAYFA KATMANI (FLIPPING PAGE OVERLAY) -->
+          <div class="page page-flipping" id="page-flipping">
+            <!-- Front content (right-page look) -->
+            <div class="page-content-front">
+              <div class="page-main-content" id="flip-front-content"></div>
+              <footer class="page-footer" id="flip-front-footer"></footer>
+            </div>
+            <!-- Back content (left-page look) -->
+            <div class="page-content-back">
+              <div class="page-main-content" id="flip-back-content"></div>
+              <footer class="page-footer" id="flip-back-footer"></footer>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SAĞ TARAFTAKİ AYLIK SEKME TABLARI -->
+      <aside class="notebook-tabs" id="notebook-tabs">
+        <button class="tab-btn" data-month="0">Oca</button>
+        <button class="tab-btn" data-month="1">Şub</button>
+        <button class="tab-btn" data-month="2">Mar</button>
+        <button class="tab-btn" data-month="3">Nis</button>
+        <button class="tab-btn" data-month="4">May</button>
+        <button class="tab-btn" data-month="5">Haz</button>
+        <button class="tab-btn" data-month="6">Tem</button>
+        <button class="tab-btn active" data-month="7">Ağu</button>
+        <button class="tab-btn" data-month="8">Eyl</button>
+        <button class="tab-btn" data-month="9">Eki</button>
+        <button class="tab-btn" data-month="10">Kas</button>
+        <button class="tab-btn" data-month="11">Ara</button>
+      </aside>
+
+    </div>
+
+    <!-- ALT GEÇİŞ BUTONLARI -->
+    <nav class="navigation-controls">
+      <button class="nav-btn" id="prev-spread-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Önceki Sayfalar
+      </button>
+      
+      <button class="nav-btn today-btn" id="today-btn">Bugün</button>
+      
+      <button class="nav-btn" id="next-spread-btn">
+        Sonraki Sayfalar
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+    </nav>
+  </main>
+  
+  <script src="app.js"></script>
+</body>
+</html>
