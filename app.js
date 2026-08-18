@@ -151,14 +151,74 @@ function init() {
 
   window.addEventListener('resize', debounce(resizeCanvases, 250));
 
-  // 7. Setup live Clock
-  updateLiveHeaderDate();
-  setInterval(updateLiveHeaderDate, 60000); // update every minute
+  // 8. Setup Backup and Restore (Export/Import JSON)
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importFileInput = document.getElementById('import-file-input');
 
-  // 8. Setup Drag/Swipe Gestures for Page Turns
+  exportBtn.addEventListener('click', () => {
+    saveCurrentInputs();
+    saveDrawings();
+    
+    const backupObj = {
+      version: '1.0',
+      timestamp: Date.now(),
+      data: diaryData
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `ajanda_yedek_${formatDateString(new Date())}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+
+  importBtn.addEventListener('click', () => {
+    importFileInput.click();
+  });
+
+  importFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const backupObj = JSON.parse(event.target.result);
+        let importedData = null;
+        
+        // Handle new backup version format or raw data fallback
+        if (backupObj && backupObj.data && typeof backupObj.data === 'object') {
+          importedData = backupObj.data;
+        } else if (backupObj && typeof backupObj === 'object') {
+          importedData = backupObj;
+        }
+
+        if (importedData) {
+          if (confirm('Mevcut verilerinizin üzerine yedekteki veriler yazılacaktır. Onaylıyor musunuz?')) {
+            diaryData = importedData;
+            localStorage.setItem('classic-notebook-db', JSON.stringify(diaryData));
+            renderSpread();
+            alert('Veriler başarıyla yedekten geri yüklendi!');
+          }
+        } else {
+          alert('Geçersiz yedek dosyası formatı!');
+        }
+      } catch (err) {
+        alert('Yedek dosyası okunurken hata oluştu!');
+      }
+      // Reset file input to allow same file import multiple times
+      importFileInput.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  // 9. Setup Drag/Swipe Gestures for Page Turns
   setupSwipeGestures();
 
-  // 9. Initial Render of Current Spread
+  // 10. Initial Render of Current Spread
   renderSpread();
 }
 
