@@ -970,3 +970,39 @@ html[data-theme="light"] .moon-icon { display: block; }
 .split-fourth .day-date-heading {
   margin-bottom: 4px;
 }
+
+/* THICKNESS SELECTOR GROUP */
+.thickness-group {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 10px;
+}
+
+.thickness-btn {
+  background: none;
+  border: 1.5px solid transparent;
+  color: var(--header-text);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-normal);
+  padding: 0;
+}
+
+.thickness-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.thickness-btn.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.thickness-dot {
+  background-color: var(--header-text);
+  border-radius: var(--border-radius-round);
+  display: block;
+}

@@ -5,6 +5,7 @@ let isFlipping = false;
 let currentLayout = '2';
 let leftCanvasHasDrawing = false;
 let rightCanvasHasDrawing = false;
+let currentLineWidth = 2;
 
 // DOM ELEMENTS
 const themeToggle = document.getElementById('theme-toggle');
@@ -138,6 +139,18 @@ function init() {
     colorBtns.forEach(b => b.classList.remove('active'));
     highlighterBtn.classList.remove('active');
     eraserBtn.classList.add('active');
+  });
+
+  // Thickness Selector Actions
+  const thicknessBtns = document.querySelectorAll('.thickness-btn');
+  thicknessBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentLineWidth = parseFloat(btn.dataset.thickness);
+      
+      // Update active state class
+      thicknessBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
   });
 
   // Undo (Geri Al) Action Listener
@@ -973,7 +986,7 @@ function setupCanvasDrawing(canvas) {
       ctx.strokeStyle = currentInkColor === 'black' 
         ? (currentTheme === 'light' ? '#222' : '#3d3122')
         : (currentInkColor === 'blue' ? '#0984e3' : '#d63031');
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = currentLineWidth;
     }
     
     ctx.lineCap = 'round';
