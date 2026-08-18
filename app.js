@@ -615,7 +615,7 @@ function generateRuledLinesHTML(date, count) {
     const val = data[hour] || '';
     html += `
       <div class="ruled-line-row">
-        <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="...">
+        <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="..." readonly>
       </div>
     `;
   });
@@ -631,7 +631,24 @@ function bindInputListeners() {
     const dateStr = container.dataset.date;
     const inputs = container.querySelectorAll('.line-input');
     inputs.forEach(input => {
+      // 1. Text input save on change
       input.addEventListener('input', debounce(() => saveInputData(dateStr), 400));
+
+      // 2. Toggle readonly on finger/mouse touch to allow typing
+      input.addEventListener('pointerdown', (e) => {
+        const isPen = e.pointerType === 'pen' || e.pointerType === 'eraser';
+        if (!isPen && !isDrawingMode) {
+          input.removeAttribute('readonly');
+          input.focus();
+        } else {
+          e.preventDefault();
+        }
+      });
+
+      // 3. Re-enable readonly on blur to prevent stylus focus misclicks
+      input.addEventListener('blur', () => {
+        input.setAttribute('readonly', 'true');
+      });
     });
   });
 }
