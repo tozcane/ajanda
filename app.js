@@ -765,15 +765,15 @@ function triggerFlipAnimation(isForward, nextDate) {
   const backContent = document.getElementById('flip-back-content');
   const backFooter = document.getElementById('flip-back-footer');
 
-  // Format temporary pages inside flipping overlay
+  // Format temporary pages inside flipping overlay (canvas elements are stripped to prevent GPU lag)
   if (isForward) {
     // Turning right page to left: Front represents current right-page, Back represents new left-page
-    frontContent.innerHTML = rightPageContent.innerHTML;
+    frontContent.innerHTML = rightPageContent.innerHTML.replace(/<canvas[^>]*><\/canvas>/g, '');
     frontFooter.innerHTML = rightPageContent.nextElementSibling.innerHTML; // mini calendar container
 
     // Temporarily build new left-page details
     const { leftDate } = calculateSpreadDates(nextDate);
-    backContent.innerHTML = generatePageHTML(leftDate, false);
+    backContent.innerHTML = generatePageHTML(leftDate, false).replace(/<canvas[^>]*><\/canvas>/g, '');
     
     // next month mini calendar HTML
     backFooter.innerHTML = `
@@ -784,15 +784,15 @@ function triggerFlipAnimation(isForward, nextDate) {
     `;
   } else {
     // Turning left page to right: Back represents current left-page, Front represents new right-page
-    backContent.innerHTML = leftPageContent.innerHTML;
+    backContent.innerHTML = leftPageContent.innerHTML.replace(/<canvas[^>]*><\/canvas>/g, '');
     backFooter.innerHTML = leftPageContent.nextElementSibling.innerHTML;
 
     // Temporarily build new right-page details
     const { leftDate, rightDate1, rightDate2 } = calculateSpreadDates(nextDate);
     if (rightDate2) {
-      frontContent.innerHTML = generateWeekendSplitPageHTML(rightDate1, rightDate2);
+      frontContent.innerHTML = generateWeekendSplitPageHTML(rightDate1, rightDate2).replace(/<canvas[^>]*><\/canvas>/g, '');
     } else {
-      frontContent.innerHTML = generatePageHTML(rightDate1, false);
+      frontContent.innerHTML = generatePageHTML(rightDate1, false).replace(/<canvas[^>]*><\/canvas>/g, '');
     }
     
     const nextMonthDate = new Date(leftDate.getFullYear(), leftDate.getMonth() + 1, 1);
