@@ -646,7 +646,7 @@ html[data-theme="light"] .moon-icon { display: block; }
   
   .page {
     width: 100%;
-    height: auto;
+    height: 720px; /* Fixed height for portrait iPad/mobile to prevent splits and canvases from collapsing */
     border-radius: var(--border-radius-md) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   }
