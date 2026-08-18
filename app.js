@@ -218,7 +218,14 @@ function init() {
   // 9. Setup Drag/Swipe Gestures for Page Turns
   setupSwipeGestures();
 
-  // 10. Initial Render of Current Spread
+  // 10. Register Service Worker for Offline PWA Support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker registered successfully'))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  }
+
+  // 11. Initial Render of Current Spread
   renderSpread();
 }
 
