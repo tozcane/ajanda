@@ -3,6 +3,8 @@ let diaryData = {};
 let currentDate = new Date();
 let isFlipping = false;
 let currentLayout = '2';
+let leftCanvasHasDrawing = false;
+let rightCanvasHasDrawing = false;
 
 // DOM ELEMENTS
 const themeToggle = document.getElementById('theme-toggle');
@@ -909,6 +911,10 @@ function setupCanvasDrawing(canvas) {
     
     isDrawing = true;
     
+    // Mark dirty state
+    if (canvas.id === 'left-canvas') leftCanvasHasDrawing = true;
+    if (canvas.id === 'right-canvas') rightCanvasHasDrawing = true;
+
     // Save snapshot to globalUndoStack before drawing stroke
     const snapshot = {
       canvasId: canvas.id,
@@ -1050,17 +1056,8 @@ function saveDrawings() {
   const leftCanvas = document.getElementById('left-canvas');
   const rightCanvas = document.getElementById('right-canvas');
 
-  function isCanvasBlank(canvas) {
-    if (!canvas || canvas.width === 0 || canvas.height === 0) return true;
-    const context = canvas.getContext('2d');
-    const buffer = new Uint32Array(
-      context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
-    );
-    return !buffer.some(color => color !== 0);
-  }
-
   if (!diaryData[leftKey]) diaryData[leftKey] = {};
-  if (!isCanvasBlank(leftCanvas)) {
+  if (leftCanvasHasDrawing && leftCanvas) {
     diaryData[leftKey].drawing = leftCanvas.toDataURL();
   } else {
     delete diaryData[leftKey].drawing;
@@ -1068,7 +1065,7 @@ function saveDrawings() {
 
   if (currentLayout !== '1') {
     if (!diaryData[rightKey]) diaryData[rightKey] = {};
-    if (!isCanvasBlank(rightCanvas)) {
+    if (rightCanvasHasDrawing && rightCanvas) {
       diaryData[rightKey].drawing = rightCanvas.toDataURL();
     } else {
       delete diaryData[rightKey].drawing;
@@ -1105,7 +1102,11 @@ function loadDrawings() {
     rightCtx.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
   }
 
-  if (diaryData[leftKey] && diaryData[leftKey].drawing) {
+  // Populate dirty states from storage load
+  leftCanvasHasDrawing = !!(diaryData[leftKey] && diaryData[leftKey].drawing);
+  rightCanvasHasDrawing = !!(diaryData[rightKey] && diaryData[rightKey].drawing);
+
+  if (leftCanvasHasDrawing) {
     const img = new Image();
     img.onload = () => {
       leftCtx.drawImage(img, 0, 0, leftCanvas.width, leftCanvas.height);
@@ -1113,7 +1114,7 @@ function loadDrawings() {
     img.src = diaryData[leftKey].drawing;
   }
 
-  if (currentLayout !== '1' && diaryData[rightKey] && diaryData[rightKey].drawing) {
+  if (currentLayout !== '1' && rightCanvasHasDrawing) {
     const img = new Image();
     img.onload = () => {
       rightCtx.drawImage(img, 0, 0, rightCanvas.width, rightCanvas.height);
@@ -1127,6 +1128,9 @@ function clearPageDrawings() {
   const rightCanvas = document.getElementById('right-canvas');
   if (leftCanvas) leftCanvas.getContext('2d').clearRect(0, 0, leftCanvas.width, leftCanvas.height);
   if (rightCanvas) rightCanvas.getContext('2d').clearRect(0, 0, rightCanvas.width, rightCanvas.height);
+  
+  leftCanvasHasDrawing = false;
+  rightCanvasHasDrawing = false;
   saveDrawings();
 }
 

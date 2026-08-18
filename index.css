@@ -500,6 +500,7 @@ html[data-theme="light"] .moon-icon { display: block; }
   box-shadow: none;
   border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
   transform-origin: left center;
+  will-change: transform, opacity; /* GPU Hardware Acceleration */
 }
 
 .page-content-front,
