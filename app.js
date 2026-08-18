@@ -110,6 +110,10 @@ function init() {
 
   // Color Tools Selectors
   const colorBtns = document.querySelectorAll('.color-btn');
+  const highlighterBtn = document.getElementById('highlighter-btn');
+  const eraserBtn = document.getElementById('eraser-btn');
+  const textToolBtn = document.getElementById('text-tool-btn');
+
   colorBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       currentTool = 'pen';
@@ -118,27 +122,45 @@ function init() {
       // Update Active Classes
       colorBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('highlighter-btn').classList.remove('active');
-      document.getElementById('eraser-btn').classList.remove('active');
+      highlighterBtn.classList.remove('active');
+      eraserBtn.classList.remove('active');
+      textToolBtn.classList.remove('active');
+
+      lockAllInputs();
     });
   });
 
   // Highlighter Tool Select
-  const highlighterBtn = document.getElementById('highlighter-btn');
   highlighterBtn.addEventListener('click', () => {
     currentTool = 'highlighter';
     colorBtns.forEach(b => b.classList.remove('active'));
     highlighterBtn.classList.add('active');
-    document.getElementById('eraser-btn').classList.remove('active');
+    eraserBtn.classList.remove('active');
+    textToolBtn.classList.remove('active');
+
+    lockAllInputs();
   });
 
   // Eraser Tool Select
-  const eraserBtn = document.getElementById('eraser-btn');
   eraserBtn.addEventListener('click', () => {
     currentTool = 'eraser';
     colorBtns.forEach(b => b.classList.remove('active'));
     highlighterBtn.classList.remove('active');
     eraserBtn.classList.add('active');
+    textToolBtn.classList.remove('active');
+
+    lockAllInputs();
+  });
+
+  // Text Tool Select
+  textToolBtn.addEventListener('click', () => {
+    currentTool = 'text';
+    colorBtns.forEach(b => b.classList.remove('active'));
+    highlighterBtn.classList.remove('active');
+    eraserBtn.classList.remove('active');
+    textToolBtn.classList.add('active');
+
+    unlockAllInputs();
   });
 
   // Thickness Selector Actions
@@ -264,6 +286,22 @@ function init() {
 
   // 11. Initial Render of Current Spread
   renderSpread();
+}
+
+function lockAllInputs() {
+  const inputs = document.querySelectorAll('.line-input');
+  inputs.forEach(input => {
+    input.style.pointerEvents = 'none';
+    input.setAttribute('readonly', 'true');
+  });
+}
+
+function unlockAllInputs() {
+  const inputs = document.querySelectorAll('.line-input');
+  inputs.forEach(input => {
+    input.style.pointerEvents = 'auto';
+    input.removeAttribute('readonly');
+  });
 }
 
 // THEME SYSTEM
@@ -611,11 +649,13 @@ function generateRuledLinesHTML(date, count) {
 
   let html = `<div class="ruled-lines-container" data-date="${dateStr}">`;
   
+  const isTextMode = currentTool === 'text';
+
   hours.forEach(hour => {
     const val = data[hour] || '';
     html += `
       <div class="ruled-line-row">
-        <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="..." readonly>
+        <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="..." ${isTextMode ? '' : 'readonly'} style="pointer-events: ${isTextMode ? 'auto' : 'none'};">
       </div>
     `;
   });
@@ -629,32 +669,9 @@ function bindInputListeners() {
   const containers = document.querySelectorAll('.ruled-lines-container');
   containers.forEach(container => {
     const dateStr = container.dataset.date;
-    
-    // Listen for input changes and blur
     const inputs = container.querySelectorAll('.line-input');
     inputs.forEach(input => {
       input.addEventListener('input', debounce(() => saveInputData(dateStr), 400));
-      
-      input.addEventListener('blur', () => {
-        input.style.pointerEvents = 'none';
-        input.setAttribute('readonly', 'true');
-      });
-    });
-
-    // Listen on rows for finger/mouse touches (since inputs have pointer-events: none)
-    const rows = container.querySelectorAll('.ruled-line-row');
-    rows.forEach(row => {
-      row.addEventListener('pointerdown', (e) => {
-        const isPen = e.pointerType === 'pen' || e.pointerType === 'eraser';
-        if (!isPen && !isDrawingMode) {
-          const input = row.querySelector('.line-input');
-          if (input) {
-            input.style.pointerEvents = 'auto';
-            input.removeAttribute('readonly');
-            input.focus();
-          }
-        }
-      });
     });
   });
 }
@@ -949,6 +966,7 @@ function setupCanvasDrawing(canvas) {
   const pageInner = canvas.closest('.page-inner');
 
   function start(e) {
+    if (currentTool === 'text') return;
     const isPen = e.pointerType === 'pen';
     const isEraser = e.pointerType === 'eraser';
     if (!isDrawingMode && !isPen && !isEraser) return;
@@ -1032,6 +1050,7 @@ function setupCanvasDrawing(canvas) {
 
   // Pointerdown listens on pageInner to detect Apple Pencil vs Touch
   pageInner.addEventListener('pointerdown', (e) => {
+    if (currentTool === 'text') return;
     const isPen = e.pointerType === 'pen';
     const isEraser = e.pointerType === 'eraser';
     if (isPen || isEraser || isDrawingMode) {
