@@ -797,6 +797,12 @@ html[data-theme="light"] .moon-icon { display: block; }
   touch-action: none; /* Disable default Safari double-tap, pan, zoom behaviors inside pages */
 }
 
+/* If in text tool mode, canvas must be pointer-events: none to let inputs receive clicks */
+#notebook[data-tool="text"] .drawing-canvas {
+  pointer-events: none;
+  cursor: default;
+}
+
 .drawing-canvas {
   position: absolute;
   left: 0;
@@ -804,22 +810,11 @@ html[data-theme="light"] .moon-icon { display: block; }
   width: 100%;
   height: 100%;
   z-index: 15; /* Sits above text inputs */
-  pointer-events: none; /* Let inputs receive clicks when not in drawing mode */
+  pointer-events: auto; /* Active by default in pen mode so pointer capture works natively */
   background: transparent;
   display: block;
   touch-action: none; /* Disable double-tap zoom/selection gestures */
-}
-
-/* Pen Mode active state styles */
-#notebook.drawing-mode .drawing-canvas {
-  pointer-events: auto; /* Capture touch/pen strokes */
   cursor: crosshair;
-}
-
-/* Disable hover/focus effects on text inputs while drawing to prevent stylus mis-clicks */
-#notebook.drawing-mode .line-input {
-  pointer-events: none;
-  user-select: none;
 }
 
 /* Highlight draw button when active */

@@ -465,6 +465,7 @@ function calculateSpreadDates(date) {
 // MAIN RENDERING ENGINE
 function renderSpread(date = currentDate) {
   notebook.setAttribute('data-layout', currentLayout);
+  notebook.setAttribute('data-tool', currentTool);
 
   if (currentLayout === '1') {
     // 1. Single Day View Mode
@@ -1069,17 +1070,13 @@ function setupCanvasDrawing(canvas) {
     }
   }
 
-  // Pointerdown listens on pageInner to detect Apple Pencil vs Touch
-  pageInner.addEventListener('pointerdown', (e) => {
+  // Pointerdown directly on canvas to capture touch/pen strokes
+  canvas.addEventListener('pointerdown', (e) => {
     if (currentTool === 'text') return;
     const isPen = e.pointerType === 'pen';
     const isEraser = e.pointerType === 'eraser';
     if (isPen || isEraser || isDrawingMode) {
-      // Find where pointerdown occurred relative to canvas bounds
-      const rect = canvas.getBoundingClientRect();
-      if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-        start(e);
-      }
+      start(e);
     }
   }, { passive: false });
 
