@@ -794,6 +794,7 @@ html[data-theme="light"] .moon-icon { display: block; }
 /* STYLUS & DRAWING TUVAL OVERLAY */
 .page-inner {
   position: relative; /* Keep canvas overlay contained exactly to page boundaries */
+  touch-action: none; /* Disable default Safari double-tap, pan, zoom behaviors inside pages */
 }
 
 .drawing-canvas {
@@ -806,6 +807,7 @@ html[data-theme="light"] .moon-icon { display: block; }
   pointer-events: none; /* Let inputs receive clicks when not in drawing mode */
   background: transparent;
   display: block;
+  touch-action: none; /* Disable double-tap zoom/selection gestures */
 }
 
 /* Pen Mode active state styles */

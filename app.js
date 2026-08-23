@@ -274,6 +274,20 @@ function init() {
     reader.readAsText(file);
   });
 
+  // Tüm Verileri Temizle (Reset All Data)
+  const resetAllBtn = document.getElementById('reset-all-btn');
+  if (resetAllBtn) {
+    resetAllBtn.addEventListener('click', () => {
+      if (confirm('DİKKAT: Alınmış tüm notlar ve el yazısı çizimleri kalıcı olarak silinecektir. Emin misiniz?')) {
+        localStorage.removeItem('classic-notebook-db');
+        diaryData = {};
+        currentDate = new Date();
+        renderSpread();
+        alert('Tüm veriler başarıyla silindi ve sıfırlandı!');
+      }
+    });
+  }
+
   // 9. Setup Drag/Swipe Gestures for Page Turns
   setupSwipeGestures();
 
