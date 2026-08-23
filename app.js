@@ -887,6 +887,9 @@ function triggerFlipAnimation(isForward, nextDate) {
 
 // UTILITIES
 function saveCurrentInputs() {
+  // Commit any pending canvas drawings immediately before switching date/spread or exporting
+  forceSaveDrawingsPending();
+
   const containers = document.querySelectorAll('.ruled-lines-container');
   containers.forEach(container => {
     const dateStr = container.dataset.date;
@@ -1048,7 +1051,7 @@ function setupCanvasDrawing(canvas) {
       if (canvas.releasePointerCapture && e && e.pointerId !== undefined) {
         canvas.releasePointerCapture(e.pointerId);
       }
-      saveDrawings();
+      saveDrawingsDebounced();
     }
   }
 
@@ -1115,6 +1118,24 @@ function resizeCanvases() {
       ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
     }
   });
+}
+
+let saveDrawingsTimeout = null;
+
+function saveDrawingsDebounced() {
+  clearTimeout(saveDrawingsTimeout);
+  saveDrawingsTimeout = setTimeout(() => {
+    saveDrawings();
+    saveDrawingsTimeout = null;
+  }, 1000);
+}
+
+function forceSaveDrawingsPending() {
+  if (saveDrawingsTimeout !== null) {
+    clearTimeout(saveDrawingsTimeout);
+    saveDrawings();
+    saveDrawingsTimeout = null;
+  }
 }
 
 function saveDrawings() {
@@ -1191,6 +1212,10 @@ function loadDrawings() {
 }
 
 function clearPageDrawings() {
+  // Cancel any pending debounced save first
+  clearTimeout(saveDrawingsTimeout);
+  saveDrawingsTimeout = null;
+
   const leftCanvas = document.getElementById('left-canvas');
   const rightCanvas = document.getElementById('right-canvas');
   if (leftCanvas) leftCanvas.getContext('2d').clearRect(0, 0, leftCanvas.width, leftCanvas.height);
