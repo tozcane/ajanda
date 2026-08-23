@@ -289,19 +289,12 @@ function init() {
 }
 
 function lockAllInputs() {
-  const inputs = document.querySelectorAll('.line-input');
-  inputs.forEach(input => {
-    input.style.pointerEvents = 'none';
-    input.setAttribute('readonly', 'true');
-  });
+  saveCurrentInputs();
+  renderSpread();
 }
 
 function unlockAllInputs() {
-  const inputs = document.querySelectorAll('.line-input');
-  inputs.forEach(input => {
-    input.style.pointerEvents = 'auto';
-    input.removeAttribute('readonly');
-  });
+  renderSpread();
 }
 
 // THEME SYSTEM
@@ -389,6 +382,9 @@ function saveInputData(dateStr) {
   if (!container) return;
 
   const inputs = container.querySelectorAll('.line-input');
+  // Safeguard: If the page is in Pen/View Mode (no active inputs in this container), do NOT save/overwrite!
+  if (inputs.length === 0) return;
+
   const dayData = {};
   
   inputs.forEach(input => {
@@ -653,11 +649,19 @@ function generateRuledLinesHTML(date, count) {
 
   hours.forEach(hour => {
     const val = data[hour] || '';
-    html += `
-      <div class="ruled-line-row">
-        <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="..." ${isTextMode ? '' : 'readonly'} style="pointer-events: ${isTextMode ? 'auto' : 'none'};">
-      </div>
-    `;
+    if (isTextMode) {
+      html += `
+        <div class="ruled-line-row">
+          <input type="text" class="line-input" data-hour="${hour}" value="${escapeHtml(val)}" placeholder="...">
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="ruled-line-row">
+          <div class="line-text" data-hour="${hour}">${escapeHtml(val)}</div>
+        </div>
+      `;
+    }
   });
   
   html += `</div>`;
