@@ -72,6 +72,13 @@ html[data-theme="light"] {
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; /* Disable selection globally to prevent iPad stylus selection highlights */
+  user-select: none;
+}
+
+input, textarea, select {
+  -webkit-user-select: text !important; /* Re-enable for inputs */
+  user-select: text !important;
 }
 
 body {
