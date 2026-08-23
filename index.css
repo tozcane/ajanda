@@ -234,6 +234,8 @@ html[data-theme="light"] .moon-icon { display: block; }
   transform-origin: left center;
   backface-visibility: hidden;
   transition: var(--transition-page);
+  -webkit-user-select: none; /* Disable native iOS text selection on drawing gestures */
+  user-select: none;
 }
 
 .page-inner {
@@ -337,6 +339,8 @@ html[data-theme="light"] .moon-icon { display: block; }
 
 .line-input {
   pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .line-text {
