@@ -135,7 +135,14 @@ function openNativePicker(fieldId) {
   catch { picker.focus(); picker.click(); }
 }
 document.querySelectorAll('[data-open-picker]').forEach((button) => button.addEventListener('click', () => openNativePicker(button.dataset.openPicker)));
-document.querySelectorAll('.formatted-date, .formatted-time').forEach((field) => field.addEventListener('click', () => openNativePicker(field.id)));
+document.querySelectorAll('.formatted-date').forEach((field) => field.addEventListener('click', () => openNativePicker(field.id)));
+document.querySelectorAll('.formatted-time').forEach((field) => field.addEventListener('input', () => {
+  const digits = field.value.replace(/\D/g, '').slice(0, 4);
+  const formatted = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits.length === 2 ? `${digits}:` : digits;
+  field.value = formatted;
+  const caret = digits.length >= 2 ? 3 + Math.max(0, digits.length - 2) : digits.length;
+  field.setSelectionRange(caret, caret);
+}));
 document.querySelectorAll('.native-picker').forEach((picker) => picker.addEventListener('change', () => {
   const field = document.getElementById(picker.dataset.pickerFor);
   if (field) field.value = picker.type === 'date' ? dateForDisplay(picker.value) : picker.value;
