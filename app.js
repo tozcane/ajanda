@@ -22,11 +22,11 @@ function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
 function saveReminders() { localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); renderReminders(); }
 function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 function dateForDisplay(value) {
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value || '');
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
   return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
 }
 function dateForStorage(value) {
-  const match = /^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/.exec((value || '').trim());
+  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((value || '').trim());
   if (!match) return '';
   const day = Number(match[1]); const month = Number(match[2]); const year = Number(match[3]);
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -34,7 +34,7 @@ function dateForStorage(value) {
   return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 function normalizeTime(value) {
-  const match = /^(\\d{1,2}):([0-5]\\d)$/.exec((value || '').trim());
+  const match = /^(\d{1,2}):([0-5]\d)$/.exec((value || '').trim());
   if (!match || Number(match[1]) > 23) return value;
   return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`;
 }
