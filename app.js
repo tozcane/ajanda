@@ -126,14 +126,16 @@ function openForm(task) {
   dialog.showModal();
   setTimeout(() => $('#title').focus(), 50);
 }
-document.querySelectorAll('[data-open-picker]').forEach((button) => button.addEventListener('click', () => {
-  const picker = document.querySelector(`[data-picker-for="${button.dataset.openPicker}"]`);
+function openNativePicker(fieldId) {
+  const picker = document.querySelector(`[data-picker-for="${fieldId}"]`);
   if (!picker) return;
-  const field = document.getElementById(button.dataset.openPicker);
+  const field = document.getElementById(fieldId);
   if (field) picker.value = picker.type === 'date' ? dateForStorage(field.value) : normalizeTime(field.value);
   try { if (picker.showPicker) picker.showPicker(); else picker.click(); }
   catch { picker.focus(); picker.click(); }
-}));
+}
+document.querySelectorAll('[data-open-picker]').forEach((button) => button.addEventListener('click', () => openNativePicker(button.dataset.openPicker)));
+document.querySelectorAll('.formatted-date, .formatted-time').forEach((field) => field.addEventListener('click', () => openNativePicker(field.id)));
 document.querySelectorAll('.native-picker').forEach((picker) => picker.addEventListener('change', () => {
   const field = document.getElementById(picker.dataset.pickerFor);
   if (field) field.value = picker.type === 'date' ? dateForDisplay(picker.value) : picker.value;
