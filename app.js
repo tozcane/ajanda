@@ -21,6 +21,23 @@ function loadReminders() {
 function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); render(); }
 function saveReminders() { localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); renderReminders(); }
 function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+function dateForDisplay(value) {
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value || '');
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
+}
+function dateForStorage(value) {
+  const match = /^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/.exec((value || '').trim());
+  if (!match) return '';
+  const day = Number(match[1]); const month = Number(match[2]); const year = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return '';
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+function normalizeTime(value) {
+  const match = /^(\\d{1,2}):([0-5]\\d)$/.exec((value || '').trim());
+  if (!match || Number(match[1]) > 23) return value;
+  return `${String(Number(match[1])).padStart(2,'0')}:${match[2]}`;
+}
 function dateValue(value) {
   if (!value) return 'Tarih eklenmedi';
   return new Date(`${value}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -94,7 +111,7 @@ function openReminder(reminder) {
   $('#reminderForm').reset();
   $('#reminderId').value = reminder?.id || '';
   $('#reminderDialogTitle').textContent = reminder ? 'Anımsatıcıyı düzenle' : 'Yeni anımsatıcı';
-  if (reminder) { $('#reminderTitle').value = reminder.title; $('#reminderDate').value = reminder.date; $('#reminderTime').value = reminder.time || ''; $('#reminderNote').value = reminder.note || ''; }
+  if (reminder) { $('#reminderTitle').value = reminder.title; $('#reminderDate').value = dateForDisplay(reminder.date); $('#reminderTime').value = reminder.time || ''; $('#reminderNote').value = reminder.note || ''; }
   reminderDialog.showModal(); setTimeout(() => $('#reminderTitle').focus(), 50);
 }
 function openForm(task) {
@@ -102,13 +119,30 @@ function openForm(task) {
   $('#taskId').value = task?.id || '';
   $('#dialogTitle').textContent = task ? 'Çekimi düzenle' : 'Yeni çekim planla';
   if (task) {
-    $('#title').value = task.title; $('#shootDate').value = task.shootDate;
+    $('#title').value = task.title; $('#shootDate').value = dateForDisplay(task.shootDate);
     $('#shootTime').value = task.shootTime || ''; $('#location').value = task.location || '';
-    $('#details').value = task.details || ''; $('#publishedDate').value = task.publishedDate || '';
+    $('#details').value = task.details || ''; $('#publishedDate').value = dateForDisplay(task.publishedDate || '');
   }
   dialog.showModal();
   setTimeout(() => $('#title').focus(), 50);
 }
+document.querySelectorAll('[data-open-picker]').forEach((button) => button.addEventListener('click', () => {
+  const picker = document.querySelector(`[data-picker-for="${button.dataset.openPicker}"]`);
+  if (!picker) return;
+  const field = document.getElementById(button.dataset.openPicker);
+  if (field) picker.value = picker.type === 'date' ? dateForStorage(field.value) : normalizeTime(field.value);
+  try { if (picker.showPicker) picker.showPicker(); else picker.click(); }
+  catch { picker.focus(); picker.click(); }
+}));
+document.querySelectorAll('.native-picker').forEach((picker) => picker.addEventListener('change', () => {
+  const field = document.getElementById(picker.dataset.pickerFor);
+  if (field) field.value = picker.type === 'date' ? dateForDisplay(picker.value) : picker.value;
+}));
+document.querySelectorAll('.formatted-date').forEach((field) => field.addEventListener('blur', () => {
+  const iso = dateForStorage(field.value);
+  if (iso) field.value = dateForDisplay(iso);
+}));
+document.querySelectorAll('.formatted-time').forEach((field) => field.addEventListener('blur', () => { field.value = normalizeTime(field.value); }));
 function notify(message) {
   const toast = $('#toast'); toast.textContent = message; toast.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
@@ -124,7 +158,7 @@ $('#reminderForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#reminderId').value;
   const existing = reminders.find(item => item.id === id);
-  const reminder = { id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), title: $('#reminderTitle').value.trim(), date: $('#reminderDate').value, time: $('#reminderTime').value, note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
+  const reminder = { id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
   reminderDialog.close(); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
@@ -137,8 +171,8 @@ $('#taskForm').addEventListener('submit', (event) => {
   const existing = tasks.find((t) => t.id === id);
   const task = {
     id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
-    title: $('#title').value.trim(), shootDate: $('#shootDate').value, shootTime: $('#shootTime').value,
-    location: $('#location').value.trim(), details: $('#details').value.trim(), publishedDate: $('#publishedDate').value,
+    title: $('#title').value.trim(), shootDate: dateForStorage($('#shootDate').value), shootTime: normalizeTime($('#shootTime').value),
+    location: $('#location').value.trim(), details: $('#details').value.trim(), publishedDate: dateForStorage($('#publishedDate').value),
     shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false,
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
