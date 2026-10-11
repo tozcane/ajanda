@@ -115,7 +115,7 @@ function render() {
   $('#shootStat').textContent = tasks.filter(t => !t.shot).length;
   $('#editStat').textContent = tasks.filter(t => t.shot && !t.edited).length;
   $('#publishedStat').textContent = tasks.filter(t => t.published).length;
-  $('#navCount').textContent = tasks.filter(t => !t.published).length;
+  const navCount = $('#navCount'); if (navCount) navCount.textContent = tasks.filter(t => !t.published).length;
   $('#allCount').textContent = tasks.length + reminders.length;
   $('#footerCount').textContent = `${events.length} kayıt gösteriliyor`;
   renderReminders();
