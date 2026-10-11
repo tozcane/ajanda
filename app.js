@@ -3,12 +3,71 @@ const $ = (selector) => document.querySelector(selector);
 const rows = $('#taskRows');
 const dialog = $('#taskDialog');
 const reminderDialog = $('#reminderDialog');
+const authDialog = $('#authDialog');
+function showDialog(target) { if (typeof target.showModal === 'function') target.showModal(); else target.setAttribute('open', ''); }
+function hideDialog(target) { if (typeof target.close === 'function' && target.open) target.close(); else target.removeAttribute('open'); }
 let tasks = loadTasks();
 let reminders = loadReminders();
+let cloud = null;
+let cloudUser = null;
+let authMode = 'sign-in';
+let cloudReady = false;
 let activeFilter = 'all';
 let query = '';
 let newestFirst = false;
 let toastTimer;
+const SYNC_QUEUE_KEY = 'planim-sync-queue-v1';
+let syncInProgress = false;
+let syncAgainRequested = false;
+
+function readSyncQueue() {
+  try { const value = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
+  catch { return []; }
+}
+function queueSync(table, items, deleteId) {
+  if (!cloudUser) return;
+  const queue = readSyncQueue();
+  const userId = cloudUser.id;
+  if (deleteId) {
+    queue.push({ opId: crypto.randomUUID(), table, userId, deleteId, at: Date.now() });
+  } else {
+    // Keep only the latest full snapshot per table/user; it includes every local change.
+    for (let i = queue.length - 1; i >= 0; i--) if (queue[i].table === table && queue[i].userId === userId && Object.hasOwn(queue[i], 'items')) queue.splice(i, 1);
+    queue.push({ opId: crypto.randomUUID(), table, userId, items: structuredClone(items), at: Date.now() });
+  }
+  localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+  updateConnectionStatus();
+  if (navigator.onLine) flushSyncQueue();
+}
+function updateConnectionStatus(message) {
+  const label = $('#storageLabel');
+  if (!label) return;
+  const pending = readSyncQueue().some(item => !cloudUser || item.userId === cloudUser.id);
+  const text = message || (!navigator.onLine ? 'Çevrimdışı · bu cihazda kaydediliyor' : pending ? 'Eşitleme bekliyor' : cloudUser ? 'Tüm cihazlarla eşitlendi' : 'Bilgilerin bu cihazda saklanır');
+  label.innerHTML = `${escapeHTML(text)} <span class="lock">◈</span>`;
+}
+async function flushSyncQueue() {
+  if (!cloud || !cloudUser || !navigator.onLine) return false;
+  if (syncInProgress) { syncAgainRequested = true; return false; }
+  syncInProgress = true; updateConnectionStatus('Eşitleniyor…');
+  try {
+    let queue = readSyncQueue();
+    for (const item of queue) {
+      if (item.userId !== cloudUser.id) continue;
+      const ok = await syncRows(item.table, item.items || [], item.deleteId);
+      if (!ok) throw new Error('Kayıtlar henüz gönderilemedi.');
+      queue = readSyncQueue().filter(entry => entry.opId !== item.opId);
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    }
+  } catch (error) {
+    console.warn('Eşitleme kuyruğu bekliyor:', error);
+  } finally {
+    syncInProgress = false; updateConnectionStatus();
+    const rerun = syncAgainRequested; syncAgainRequested = false;
+    if (rerun && navigator.onLine && cloudUser) window.setTimeout(flushSyncQueue, 0);
+  }
+  return !readSyncQueue().some(item => item.userId === cloudUser.id);
+}
 
 function loadTasks() {
   try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
@@ -18,8 +77,14 @@ function loadReminders() {
   try { const value = JSON.parse(localStorage.getItem('planim-animsaticilar-v1') || '[]'); return Array.isArray(value) ? value : []; }
   catch { return []; }
 }
-function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); render(); }
-function saveReminders() { localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); render(); }
+function saveTasks(options = {}) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); render();
+  queueSync('shoots', tasks, options.deleteId);
+}
+function saveReminders(options = {}) {
+  localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); render();
+  queueSync('reminders', reminders, options.deleteId);
+}
 function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 function dateForDisplay(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
@@ -82,10 +147,9 @@ function taskRow(task) {
 function reminderRow(reminder) {
   return `<tr class="timeline-reminder ${reminder.done ? 'is-done' : ''}">
     <td><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
-    <td><div class="date-main">${escapeHTML(reminder.time || 'Saat yok')}</div><div class="date-sub">Anımsatıcı</div></td>
-    <td class="location-cell">—</td>
-    <td><span class="reminder-kind">Anımsatıcı</span></td>
-    <td><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
+    <td><div class="date-main">${dateValue(reminder.date)}</div><div class="date-sub">${escapeHTML(reminder.time || 'Saat belirtilmedi')}</div></td>
+    <td class="location-cell">—</td><td><span class="reminder-kind">Anımsatıcı</span></td>
+    <td class="completion-cell"><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
     <td>—</td><td><div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
   </tr>`;
 }
@@ -109,17 +173,16 @@ function render() {
   const hasVisible = events.length > 0;
   $('.table-wrap').style.display = hasVisible ? '' : 'none';
   $('#emptyState').style.display = hasVisible ? 'none' : 'block';
-  const noItems = tasks.length === 0 && reminders.length === 0;
-  $('#emptyState h3').textContent = noItems ? 'İlk planını ekle' : 'Bu görünümde kayıt yok';
-  $('#emptyState p').textContent = noItems ? 'Çekimlerini ve anımsatıcılarını günlerine göre burada takip et.' : 'Başka bir filtre seçebilir veya aramanı değiştirebilirsin.';
-  $('#emptyAdd').style.display = noItems ? '' : 'none';
+  const noTasks = tasks.length === 0 && reminders.length === 0;
+  $('#emptyState h3').textContent = noTasks ? 'İlk çekimini planla' : 'Burada kayıt yok';
+  $('#emptyState p').textContent = noTasks ? 'Çekim fikirlerini ekle, sürecin her adımını kolayca takip et.' : 'Başka bir filtre seçebilir veya aramanı değiştirebilirsin.';
+  $('#emptyAdd').style.display = tasks.length === 0 ? '' : 'none';
   $('#listTitle').textContent = activeFilter === 'done' ? 'Bitenler' : 'Ajandan';
   $('#listDescription').textContent = activeFilter === 'done' ? 'Tamamlandı olarak işaretlediğin çekimler.' : 'Çekimler ve anımsatıcılar günlerine göre.';
   $('#totalStat').textContent = tasks.length;
   $('#shootStat').textContent = tasks.filter(t => !t.shot).length;
   $('#editStat').textContent = tasks.filter(t => t.shot && !t.edited).length;
   $('#publishedStat').textContent = tasks.filter(t => t.published).length;
-  const navCount = $('#navCount'); if (navCount) navCount.textContent = tasks.filter(t => !t.published).length;
   $('#doneCount').textContent = tasks.filter(t => t.done).length;
   $('#allCount').textContent = tasks.length + reminders.length;
   $('#footerCount').textContent = `${events.length} kayıt gösteriliyor`;
@@ -136,15 +199,6 @@ function renderReminders() {
     <div class="reminder-when">${dateValue(reminder.date)}${reminder.time ? ` · ${escapeHTML(reminder.time)}` : ''}</div>
     <div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
   </article>`).join('');
-}
-function showDialog(element) {
-  if (typeof element.showModal === 'function') element.showModal();
-  else { element.setAttribute('open', ''); document.body.classList.add('dialog-visible'); }
-}
-function closeDialog(element) {
-  if (typeof element.close === 'function') element.close();
-  else element.removeAttribute('open');
-  if (!document.querySelector('dialog[open]')) document.body.classList.remove('dialog-visible');
 }
 function openReminder(reminder) {
   $('#reminderForm').reset();
@@ -195,24 +249,155 @@ function notify(message) {
   const toast = $('#toast'); toast.textContent = message; toast.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
+function setAuthMessage(message, success = false) {
+  const target = $('#authMessage'); target.textContent = message; target.classList.toggle('success', success);
+}
+function updateAccountButton() {
+  const button = $('#accountButton');
+  const storageLabel = $('#storageLabel');
+  if (cloudUser) {
+    button.textContent = 'Eşitleniyor · çıkış'; button.classList.add('signed-in');
+    button.title = `Giriş yapıldı: ${cloudUser.email || ''}`;
+    storageLabel.innerHTML = 'Bu hesap bulutla eşitlenir <span class="lock">◈</span>';
+  } else if (cloudReady) {
+    button.textContent = 'Giriş yap · eşitle'; button.classList.remove('signed-in');
+    button.title = 'Aynı kayıtları diğer cihazlarında açmak için giriş yap';
+    storageLabel.innerHTML = 'Giriş yapınca kayıtların eşitlenir <span class="lock">◈</span>';
+  } else {
+    button.textContent = 'Eşitleme kuruluyor'; button.classList.remove('signed-in');
+    button.title = 'Bulut bağlantısı yapılandırılana kadar bu cihazda saklanır';
+    storageLabel.innerHTML = 'Bilgilerin bu cihazda saklanır <span class="lock">◈</span>';
+  }
+}
+function shootToRow(item) {
+  return { id:item.id, user_id:cloudUser.id, title:item.title, shoot_date:item.shootDate, shoot_time:item.shootTime || null,
+    location:item.location || '', details:item.details || '', published_date:item.publishedDate || null,
+    shot:!!item.shot, edited:!!item.edited, published:!!item.published, platforms:{...(item.platforms || {}), _done:!!item.done}, created_at:new Date(item.createdAt || Date.now()).toISOString() };
+}
+function reminderToRow(item) {
+  return { id:item.id, user_id:cloudUser.id, title:item.title, due_date:item.date, due_time:item.time || null,
+    note:item.note || '', done:!!item.done, created_at:new Date(item.createdAt || Date.now()).toISOString() };
+}
+function shootFromRow(row) {
+  return { id:row.id, title:row.title, shootDate:row.shoot_date, shootTime:row.shoot_time || '', location:row.location || '', details:row.details || '',
+    publishedDate:row.published_date || '', shot:row.shot, edited:row.edited, published:row.published, done:!!row.platforms?._done, platforms:Object.fromEntries(Object.entries(row.platforms || {}).filter(([key]) => key !== '_done')), createdAt:new Date(row.created_at).getTime() || Date.now() };
+}
+function reminderFromRow(row) {
+  return { id:row.id, title:row.title, date:row.due_date, time:row.due_time || '', note:row.note || '', done:row.done,
+    createdAt:new Date(row.created_at).getTime() || Date.now() };
+}
+async function syncRows(table, items, deleteId) {
+  if (!cloud || !cloudUser) return false;
+  let result;
+  if (deleteId) result = await cloud.from(table).delete().eq('user_id', cloudUser.id).eq('id', deleteId);
+  else if (items.length) result = await cloud.from(table).upsert(items.map(table === 'shoots' ? shootToRow : reminderToRow));
+  if (result?.error) { notify(`Buluta kaydedemedim: ${result.error.message}`); return false; }
+  return true;
+}
+let refreshInProgress = false;
+async function refreshCloudData() {
+  if (!cloud || !cloudUser || refreshInProgress || !navigator.onLine) return;
+  if (!(await flushSyncQueue())) return;
+  refreshInProgress = true;
+  try {
+    const [shootResult, reminderResult] = await Promise.all([
+      cloud.from('shoots').select('*').order('shoot_date').order('shoot_time'),
+      cloud.from('reminders').select('*').order('due_date').order('due_time')
+    ]);
+    if (shootResult.error) throw shootResult.error;
+    if (reminderResult.error) throw reminderResult.error;
+    const remoteShoots = shootResult.data.map(shootFromRow);
+    const remoteReminders = reminderResult.data.map(reminderFromRow);
+    const shootMigrationKey = `planim-cloud-migrated-${cloudUser.id}-shoots`;
+    const reminderMigrationKey = `planim-cloud-migrated-${cloudUser.id}-reminders`;
+    if (!remoteShoots.length && tasks.length && !localStorage.getItem(shootMigrationKey)) {
+      if (await syncRows('shoots', tasks)) localStorage.setItem(shootMigrationKey, '1');
+    } else { tasks = remoteShoots; localStorage.setItem(shootMigrationKey, '1'); }
+    if (!remoteReminders.length && reminders.length && !localStorage.getItem(reminderMigrationKey)) {
+      if (await syncRows('reminders', reminders)) localStorage.setItem(reminderMigrationKey, '1');
+    } else { reminders = remoteReminders; localStorage.setItem(reminderMigrationKey, '1'); }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
+    render(); updateAccountButton();
+  } catch (error) {
+    notify(`Eşitleme başarısız: ${error.message || error}`);
+  } finally { refreshInProgress = false; }
+}
+function initializeCloud() {
+  const config = window.PLANIM_SUPABASE_CONFIG || {};
+  if (!config.url || !config.publishableKey || !window.supabase?.createClient) {
+    updateAccountButton(); render(); updateConnectionStatus(); return;
+  }
+  cloudReady = true;
+  cloud = window.supabase.createClient(config.url, config.publishableKey, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } });
+  cloud.auth.onAuthStateChange((_event, session) => {
+    cloudUser = session?.user || null; updateAccountButton();
+    if (cloudUser) { hideDialog(authDialog); window.setTimeout(async () => { await flushSyncQueue(); refreshCloudData(); }, 0); }
+  });
+  updateAccountButton();
+  updateConnectionStatus();
+}
+
+$('#accountButton').addEventListener('click', async () => {
+  if (!cloudReady) { notify('Bulut eşitlemesi henüz yapılandırılmadı.'); return; }
+  if (cloudUser) {
+    const { error } = await cloud.auth.signOut();
+    if (error) notify(`Çıkış yapılamadı: ${error.message}`);
+    else { cloudUser = null; updateAccountButton(); notify('Hesaptan çıkış yapıldı.'); }
+    return;
+  }
+  authMode = 'sign-in'; $('#authTitle').textContent = 'Hesabına giriş yap';
+  $('#authSubmit').innerHTML = 'Giriş yap <span>→</span>'; $('#authModeToggle').textContent = 'Yeni hesap oluştur';
+  setAuthMessage(''); showDialog(authDialog);
+});
+$('#closeAuth').addEventListener('click', () => hideDialog(authDialog));
+$('#authModeToggle').addEventListener('click', () => {
+  authMode = authMode === 'sign-in' ? 'sign-up' : 'sign-in';
+  const signup = authMode === 'sign-up';
+  $('#authTitle').textContent = signup ? 'Yeni hesap oluştur' : 'Hesabına giriş yap';
+  $('#authSubmit').innerHTML = signup ? 'Hesap oluştur <span>→</span>' : 'Giriş yap <span>→</span>';
+  $('#authModeToggle').textContent = signup ? 'Zaten hesabım var' : 'Yeni hesap oluştur';
+  setAuthMessage('');
+});
+$('#authForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const email = $('#authEmail').value.trim(); const password = $('#authPassword').value;
+  const button = $('#authSubmit'); button.disabled = true; setAuthMessage('Bağlanıyor…');
+  try {
+    const result = authMode === 'sign-up'
+      ? await cloud.auth.signUp({ email, password, options:{ emailRedirectTo:window.location.href.split('?')[0] } })
+      : await cloud.auth.signInWithPassword({ email, password });
+    if (result.error) throw result.error;
+    if (authMode === 'sign-up' && !result.data.session) {
+      setAuthMessage('E-posta adresine gelen doğrulama bağlantısına tıkla, ardından giriş yap.', true);
+    } else { setAuthMessage('Giriş başarılı. Kayıtların eşitleniyor…', true); }
+  } catch (error) { setAuthMessage(error.message || 'Giriş başarısız. Bilgilerini kontrol et.'); }
+  finally { button.disabled = false; }
+});
+window.addEventListener('online', () => { updateConnectionStatus('Bağlantı geldi · eşitleniyor…'); flushSyncQueue().then(() => refreshCloudData()); });
+window.addEventListener('offline', () => updateConnectionStatus());
+window.addEventListener('focus', () => { if (cloudUser && navigator.onLine) { flushSyncQueue().then(() => refreshCloudData()); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudUser && navigator.onLine) { flushSyncQueue().then(() => refreshCloudData()); } });
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Çevrimdışı uygulama önbelleği açılamadı:', error));
+updateConnectionStatus();
 
 $('#newTask').addEventListener('click', () => openForm());
 $('#emptyAdd').addEventListener('click', () => openForm());
 $('#newReminder').addEventListener('click', () => openReminder());
-$('#closeReminder').addEventListener('click', () => closeDialog(reminderDialog));
-$('#cancelReminder').addEventListener('click', () => closeDialog(reminderDialog));
-reminderDialog.addEventListener('click', (event) => { if (event.target === reminderDialog) closeDialog(reminderDialog); });
+$('#closeReminder').addEventListener('click', () => hideDialog(reminderDialog));
+$('#cancelReminder').addEventListener('click', () => hideDialog(reminderDialog));
+reminderDialog.addEventListener('click', (event) => { if (event.target === reminderDialog) hideDialog(reminderDialog); });
 $('#reminderForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#reminderId').value;
   const existing = reminders.find(item => item.id === id);
   const reminder = { id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
-  closeDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
+  hideDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
-$('#closeDialog').addEventListener('click', () => closeDialog(dialog));
-$('#cancelDialog').addEventListener('click', () => closeDialog(dialog));
-dialog.addEventListener('click', (event) => { if (event.target === dialog) closeDialog(dialog); });
+$('#closeDialog').addEventListener('click', () => hideDialog(dialog));
+$('#cancelDialog').addEventListener('click', () => hideDialog(dialog));
+dialog.addEventListener('click', (event) => { if (event.target === dialog) hideDialog(dialog); });
 $('#taskForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#taskId').value;
@@ -225,7 +410,7 @@ $('#taskForm').addEventListener('submit', (event) => {
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
   tasks = existing ? tasks.map(t => t.id === id ? task : t) : [...tasks, task];
-  closeDialog(dialog); saveTasks(); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
+  hideDialog(dialog); saveTasks(); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
 });
 $('.tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-filter]'); if (!button) return;
@@ -240,15 +425,19 @@ document.querySelectorAll('[data-filter-link]').forEach(link => link.addEventLis
 }));
 $('#searchInput').addEventListener('input', (event) => { query = event.target.value.trim(); render(); });
 $('#sortButton').addEventListener('click', () => { newestFirst = !newestFirst; render(); });
+rows.addEventListener('change', (event) => {
+  const checkbox = event.target.closest('[data-complete]');
+  if (!checkbox) return;
+  const task = tasks.find(item => item.id === checkbox.dataset.complete);
+  if (task) { task.done = checkbox.checked; saveTasks(); }
+});
 rows.addEventListener('click', (event) => {
-  const completeBox = event.target.closest('[data-complete]');
-  if (completeBox) { const task = tasks.find(item => item.id === completeBox.dataset.complete); if (task) { task.done = completeBox.checked; saveTasks(); } return; }
   const reminderToggle = event.target.closest('[data-reminder-toggle]');
   if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders(); } return; }
   const reminderEdit = event.target.closest('[data-reminder-edit]');
-  if (reminderEdit) { const reminder = reminders.find(item => item.id === reminderEdit.dataset.reminderEdit); if (reminder) openReminder(reminder); return; }
+  if (reminderEdit) { openReminder(reminders.find(item => item.id === reminderEdit.dataset.reminderEdit)); return; }
   const reminderDelete = event.target.closest('[data-reminder-delete]');
-  if (reminderDelete) { reminders = reminders.filter(item => item.id !== reminderDelete.dataset.reminderDelete); saveReminders(); notify('Anımsatıcı silindi.'); return; }
+  if (reminderDelete) { reminders = reminders.filter(item => item.id !== reminderDelete.dataset.reminderDelete); saveReminders({deleteId:reminderDelete.dataset.reminderDelete}); notify('Anımsatıcı silindi.'); return; }
   const platformButton = event.target.closest('[data-platform]');
   if (platformButton) {
     const task = tasks.find(t => t.id === platformButton.dataset.id);
@@ -275,7 +464,7 @@ rows.addEventListener('click', (event) => {
   const editButton = event.target.closest('[data-edit]');
   if (editButton) { const task = tasks.find(t => t.id === editButton.dataset.edit); openForm(task); return; }
   const deleteButton = event.target.closest('[data-delete]');
-  if (deleteButton) { const task = tasks.find(t => t.id === deleteButton.dataset.delete); tasks = tasks.filter(t => t.id !== deleteButton.dataset.delete); saveTasks(); notify(`“${task.title}” silindi.`); }
+  if (deleteButton) { const task = tasks.find(t => t.id === deleteButton.dataset.delete); tasks = tasks.filter(t => t.id !== deleteButton.dataset.delete); saveTasks({deleteId:task.id}); notify(`“${task.title}” silindi.`); }
 });
 $('#reminderList').addEventListener('click', (event) => {
   const toggle = event.target.closest('[data-reminder-toggle]');
@@ -283,8 +472,8 @@ $('#reminderList').addEventListener('click', (event) => {
   const edit = event.target.closest('[data-reminder-edit]');
   if (edit) { openReminder(reminders.find(item => item.id === edit.dataset.reminderEdit)); return; }
   const remove = event.target.closest('[data-reminder-delete]');
-  if (remove) { reminders = reminders.filter(item => item.id !== remove.dataset.reminderDelete); saveReminders(); notify('Anımsatıcı silindi.'); }
+  if (remove) { reminders = reminders.filter(item => item.id !== remove.dataset.reminderDelete); saveReminders({deleteId:remove.dataset.reminderDelete}); notify('Anımsatıcı silindi.'); }
 });
 document.addEventListener('click', (event) => { if (!event.target.closest('.row-actions')) document.querySelectorAll('.action-menu').forEach(m => m.hidden = true); });
 $('#todayLabel').textContent = new Date().toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
-render();
+initializeCloud();

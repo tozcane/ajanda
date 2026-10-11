@@ -12,4 +12,4 @@ A GitHub Actions workflow publishes the site to GitHub Pages when changes are pu
 
 ## Data storage
 
-The current version stores shoots and reminders in the browser's local storage. It does not yet synchronize records between devices. A shared database and account sign-in are needed for that.
+Shoots and reminders are saved on the device immediately. GitHub Pages installs a service worker to keep the app shell available offline. If cloud sync is configured and the user is signed in, edits are queued locally while offline and sent when the connection returns. Cloud sync requires a Supabase project; set its URL and publishable key in `supabase-config.js` and apply `supabase-schema.sql` before enabling accounts.
