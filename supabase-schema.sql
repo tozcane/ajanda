@@ -51,3 +51,7 @@ create policy "Users can update their reminders" on public.reminders
   with check ((select auth.uid()) = user_id);
 create policy "Users can delete their reminders" on public.reminders
   for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- Stream planner edits between signed-in devices.
+alter publication supabase_realtime add table public.shoots;
+alter publication supabase_realtime add table public.reminders;
