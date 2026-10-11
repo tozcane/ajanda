@@ -12,3 +12,6 @@ html,body{height:100%;overflow:hidden}.app-shell{height:100dvh;min-height:0}.mai
 .timeline-shoot td{background:#fff0ef}.timeline-shoot .task-mark{background:#ffe1df;color:#c94c4c}.timeline-reminder td{background:#fff}
 
 .timeline-shoot td{background:#ffd9d9!important}.timeline-shoot .task-mark{background:#ffbcbc!important;color:#a90000!important}.timeline-reminder td{background:#fff!important}.timeline-shoot{border-left:4px solid #d71920}
+
+/* Keep sharing controls inside their stage card at every viewport width. */
+.stage-grid{grid-template-columns:74px 78px minmax(0,188px);max-width:100%;align-items:stretch}.share-box{box-sizing:border-box;min-width:0;max-width:100%;display:flex;flex-wrap:wrap;align-content:center;overflow:hidden}.share-title{flex:0 0 100%;min-width:0}.platforms{display:flex;flex-wrap:wrap;align-items:center;gap:3px;width:100%;min-width:0;max-width:100%}.platform{box-sizing:border-box;white-space:nowrap;max-width:100%;flex:0 1 auto}.table-wrap{max-width:100%;overflow:auto}table{min-width:850px}@media(max-width:1000px){.main-content{min-width:0}.content-panel{min-width:0}.table-wrap{min-width:0}.stage-grid{grid-template-columns:74px 78px minmax(180px,188px)}}
