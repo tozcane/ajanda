@@ -8,3 +8,5 @@ html,body{height:100%;overflow:hidden}.app-shell{height:100dvh;min-height:0}.mai
 
 /* Unified day grouped agenda */
 .reminder-panel{display:none!important}.day-divider td{padding:8px 14px!important;background:#f2efff;border:1px solid #e8e2ff;border-radius:8px}.day-divider .day-label{display:flex;align-items:center;justify-content:space-between;color:#6852c8;font-size:11px;text-transform:capitalize}.day-label span{font-size:9px;color:#9790b8}.timeline-reminder .reminder-mark{width:32px;height:32px;flex:none;border-radius:9px;display:grid;place-items:center;background:#fff5e8;color:#bd7b25;font-size:15px}.timeline-reminder.is-done .task-name{text-decoration:line-through;color:#a5a39c}.timeline-reminder .reminder-check{margin:0 auto}.timeline-reminder .reminder-actions{white-space:nowrap}.timeline-reminder .reminder-actions button{border:0;background:transparent;color:#77756f;padding:5px;font:10px 'DM Sans';cursor:pointer}.timeline-reminder .reminder-actions button:hover{color:#6e57d4}.timeline-reminder td{background:#fff}
+
+.timeline-shoot td{background:#fff0ef}.timeline-shoot .task-mark{background:#ffe1df;color:#c94c4c}.timeline-reminder td{background:#fff}
