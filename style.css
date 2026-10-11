@@ -46,3 +46,7 @@ body.dialog-visible:before{content:'';position:fixed;inset:0;background:#24222d6
   .sidebar-stats .stat-note,.sidebar-bottom{display:none}
   .main-content{height:calc(100dvh - 194px)}
 }
+/* Tighten calendar rows while keeping them easy to scan. */
+.timeline-shoot td,.timeline-reminder td{padding-top:7px;padding-bottom:7px}
+.day-divider td{padding-top:5px!important;padding-bottom:5px!important}
+.reminder-item{min-height:52px;padding:7px 0}
