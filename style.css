@@ -50,3 +50,10 @@ body.dialog-visible:before{content:'';position:fixed;inset:0;background:#24222d6
 .timeline-shoot td,.timeline-reminder td{padding-top:7px;padding-bottom:7px}
 .day-divider td{padding-top:5px!important;padding-bottom:5px!important}
 .reminder-item{min-height:52px;padding:7px 0}
+
+/* Keep every sharing platform fully inside its white card. */
+.stage-grid{grid-template-columns:74px 78px minmax(0,188px);max-width:100%}
+.share-box{display:grid!important;grid-template-columns:minmax(0,1fr);align-content:center;justify-content:stretch;box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden;padding:5px 6px;white-space:normal;background:#fff}
+.share-title{min-width:0;white-space:nowrap}
+.platforms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;width:100%;min-width:0;max-width:100%}
+.platform{box-sizing:border-box;width:100%;min-width:0;padding:4px 2px;text-align:center;white-space:nowrap;overflow:hidden;font-size:9px}
