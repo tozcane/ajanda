@@ -12,6 +12,8 @@ let cloud = null;
 let cloudUser = null;
 let authMode = 'sign-in';
 let cloudReady = false;
+let realtimeChannel = null;
+let cloudRefreshTimer = null;
 let activeFilter = 'all';
 let query = '';
 let newestFirst = false;
@@ -308,20 +310,27 @@ async function refreshCloudData() {
     if (reminderResult.error) throw reminderResult.error;
     const remoteShoots = shootResult.data.map(shootFromRow);
     const remoteReminders = reminderResult.data.map(reminderFromRow);
-    const shootMigrationKey = `planim-cloud-migrated-${cloudUser.id}-shoots`;
-    const reminderMigrationKey = `planim-cloud-migrated-${cloudUser.id}-reminders`;
-    if (!remoteShoots.length && tasks.length && !localStorage.getItem(shootMigrationKey)) {
-      if (await syncRows('shoots', tasks)) localStorage.setItem(shootMigrationKey, '1');
-    } else { tasks = remoteShoots; localStorage.setItem(shootMigrationKey, '1'); }
-    if (!remoteReminders.length && reminders.length && !localStorage.getItem(reminderMigrationKey)) {
-      if (await syncRows('reminders', reminders)) localStorage.setItem(reminderMigrationKey, '1');
-    } else { reminders = remoteReminders; localStorage.setItem(reminderMigrationKey, '1'); }
+    // Cloud is authoritative: an empty cloud account must also clear stale device data.
+    tasks = remoteShoots;
+    reminders = remoteReminders;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
     render(); updateAccountButton();
   } catch (error) {
     notify(`Eşitleme başarısız: ${error.message || error}`);
   } finally { refreshInProgress = false; }
+}
+function subscribeToCloudChanges() {
+  if (!cloud || !cloudUser) return;
+  if (realtimeChannel) cloud.removeChannel(realtimeChannel);
+  realtimeChannel = cloud.channel(`planim-${cloudUser.id}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'shoots', filter:`user_id=eq.${cloudUser.id}` }, scheduleCloudRefresh)
+    .on('postgres_changes', { event:'*', schema:'public', table:'reminders', filter:`user_id=eq.${cloudUser.id}` }, scheduleCloudRefresh)
+    .subscribe();
+}
+function scheduleCloudRefresh() {
+  clearTimeout(cloudRefreshTimer);
+  cloudRefreshTimer = window.setTimeout(refreshCloudData, 250);
 }
 function initializeCloud() {
   const config = window.PLANIM_SUPABASE_CONFIG || {};
@@ -332,7 +341,8 @@ function initializeCloud() {
   cloud = window.supabase.createClient(config.url, config.publishableKey, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } });
   cloud.auth.onAuthStateChange((_event, session) => {
     cloudUser = session?.user || null; updateAccountButton();
-    if (cloudUser) { hideDialog(authDialog); window.setTimeout(async () => { await flushSyncQueue(); refreshCloudData(); }, 0); }
+    if (cloudUser) { hideDialog(authDialog); subscribeToCloudChanges(); window.setTimeout(async () => { await flushSyncQueue(); refreshCloudData(); }, 0); }
+    else if (realtimeChannel) { cloud.removeChannel(realtimeChannel); realtimeChannel = null; }
   });
   updateAccountButton();
   updateConnectionStatus();
