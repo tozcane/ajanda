@@ -132,12 +132,21 @@ function renderReminders() {
     <div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
   </article>`).join('');
 }
+function showDialog(element) {
+  if (typeof element.showModal === 'function') element.showModal();
+  else { element.setAttribute('open', ''); document.body.classList.add('dialog-visible'); }
+}
+function closeDialog(element) {
+  if (typeof element.close === 'function') element.close();
+  else element.removeAttribute('open');
+  if (!document.querySelector('dialog[open]')) document.body.classList.remove('dialog-visible');
+}
 function openReminder(reminder) {
   $('#reminderForm').reset();
   $('#reminderId').value = reminder?.id || '';
   $('#reminderDialogTitle').textContent = reminder ? 'Anımsatıcıyı düzenle' : 'Yeni anımsatıcı';
   if (reminder) { $('#reminderTitle').value = reminder.title; $('#reminderDate').value = dateForDisplay(reminder.date); $('#reminderTime').value = reminder.time || ''; $('#reminderNote').value = reminder.note || ''; }
-  reminderDialog.showModal(); setTimeout(() => $('#reminderTitle').focus(), 50);
+  showDialog(reminderDialog); setTimeout(() => $('#reminderTitle').focus(), 50);
 }
 function openForm(task) {
   $('#taskForm').reset();
@@ -148,7 +157,7 @@ function openForm(task) {
     $('#shootTime').value = task.shootTime || ''; $('#location').value = task.location || '';
     $('#details').value = task.details || ''; $('#publishedDate').value = dateForDisplay(task.publishedDate || '');
   }
-  dialog.showModal();
+  showDialog(dialog);
   setTimeout(() => $('#title').focus(), 50);
 }
 function openNativePicker(fieldId) {
@@ -185,20 +194,20 @@ function notify(message) {
 $('#newTask').addEventListener('click', () => openForm());
 $('#emptyAdd').addEventListener('click', () => openForm());
 $('#newReminder').addEventListener('click', () => openReminder());
-$('#closeReminder').addEventListener('click', () => reminderDialog.close());
-$('#cancelReminder').addEventListener('click', () => reminderDialog.close());
-reminderDialog.addEventListener('click', (event) => { if (event.target === reminderDialog) reminderDialog.close(); });
+$('#closeReminder').addEventListener('click', () => closeDialog(reminderDialog));
+$('#cancelReminder').addEventListener('click', () => closeDialog(reminderDialog));
+reminderDialog.addEventListener('click', (event) => { if (event.target === reminderDialog) closeDialog(reminderDialog); });
 $('#reminderForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#reminderId').value;
   const existing = reminders.find(item => item.id === id);
   const reminder = { id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
-  reminderDialog.close(); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
+  closeDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
-$('#closeDialog').addEventListener('click', () => dialog.close());
-$('#cancelDialog').addEventListener('click', () => dialog.close());
-dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+$('#closeDialog').addEventListener('click', () => closeDialog(dialog));
+$('#cancelDialog').addEventListener('click', () => closeDialog(dialog));
+dialog.addEventListener('click', (event) => { if (event.target === dialog) closeDialog(dialog); });
 $('#taskForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#taskId').value;
@@ -211,7 +220,7 @@ $('#taskForm').addEventListener('submit', (event) => {
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
   tasks = existing ? tasks.map(t => t.id === id ? task : t) : [...tasks, task];
-  dialog.close(); saveTasks(); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
+  closeDialog(dialog); saveTasks(); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
 });
 $('.tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-filter]'); if (!button) return;
