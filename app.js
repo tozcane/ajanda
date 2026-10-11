@@ -67,11 +67,12 @@ function taskRow(task) {
   const platforms = task.platforms || {};
   const stageBox = (stage, label, symbol) => `<button class="stage-box ${task[stage] ? 'done' : ''}" data-stage="${stage}" data-id="${task.id}" aria-pressed="${!!task[stage]}"><span class="stage-check">${task[stage] ? '✓' : symbol}</span><span>${label}</span></button>`;
   const progressHTML = `<div class="stage-grid">${stageBox('shot','Çekim','◷')}${stageBox('edited','Montaj','✳')}<div class="stage-box share-box ${task.published ? 'done' : ''}"><span class="share-title"><span class="stage-check">${task.published ? '✓' : '↗'}</span> Paylaşım</span><div class="platforms">${['Instagram','LinkedIn','YouTube'].map(name => `<button class="platform ${platforms[name] ? 'selected' : ''}" data-platform="${name}" data-id="${task.id}" aria-pressed="${!!platforms[name]}">${name}</button>`).join('')}</div></div></div>`;
-  return `<tr class="timeline-shoot">
+  return `<tr class="timeline-shoot ${task.done ? 'is-complete' : ''}">`
     <td><div class="task-main"><span class="task-mark">✳</span><div><div class="task-name" title="${escapeHTML(task.title)}">${escapeHTML(task.title)}</div><div class="task-detail">${escapeHTML(task.details || 'Not eklenmedi')}</div></div></div></td>
     <td><div class="date-main">${dateValue(task.shootDate)}</div><div class="date-sub">${escapeHTML(task.shootTime || 'Saat belirtilmedi')}</div></td>
     <td class="location-cell" title="${escapeHTML(task.location)}">${escapeHTML(task.location || 'Yer belirtilmedi')}</td>
     <td>${progressHTML}<div class="progress-caption">${progress}/3 tamamlandı</div></td>
+    <td class="completion-cell"><input type="checkbox" data-complete="${task.id}" aria-label="Tamamlandı olarak işaretle" ${task.done ? 'checked' : ''}></td>
     <td class="published-cell ${task.published ? 'is-published' : ''}">${task.published ? dateValue(task.publishedDate || todayISO()) : '<span>—</span>'}</td>
     <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
   </tr>`;
@@ -81,6 +82,7 @@ function reminderRow(reminder) {
     <td><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
     <td><div class="date-main">${escapeHTML(reminder.time || 'Saat yok')}</div><div class="date-sub">Anımsatıcı</div></td>
     <td class="location-cell">—</td>
+    <td><span class="reminder-kind">Anımsatıcı</span></td>
     <td><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
     <td>—</td><td><div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
   </tr>`;
@@ -101,7 +103,7 @@ function render() {
     if (!group || group.date !== event.date) { group = {date:event.date,events:[]}; groups.push(group); }
     group.events.push(event);
   }
-  rows.innerHTML = groups.map(group => `<tr class="day-divider"><td colspan="6"><div class="day-label"><strong>${escapeHTML(dayLabel(group.date))}</strong><span>${group.events.length} kayıt</span></div></td></tr>` + group.events.map(event => event.kind === 'shoot' ? taskRow(event.item) : reminderRow(event.item)).join('')).join('');
+  rows.innerHTML = groups.map(group => `<tr class="day-divider"><td colspan="7"><div class="day-label"><strong>${escapeHTML(dayLabel(group.date))}</strong><span>${group.events.length} kayıt</span></div></td></tr>` + group.events.map(event => event.kind === 'shoot' ? taskRow(event.item) : reminderRow(event.item)).join('')).join('');
   const hasVisible = events.length > 0;
   $('.table-wrap').style.display = hasVisible ? '' : 'none';
   $('#emptyState').style.display = hasVisible ? 'none' : 'block';
@@ -205,7 +207,7 @@ $('#taskForm').addEventListener('submit', (event) => {
     id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
     title: $('#title').value.trim(), shootDate: dateForStorage($('#shootDate').value), shootTime: normalizeTime($('#shootTime').value),
     location: $('#location').value.trim(), details: $('#details').value.trim(), publishedDate: dateForStorage($('#publishedDate').value),
-    shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false,
+    shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false, done: existing?.done || false,
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
   tasks = existing ? tasks.map(t => t.id === id ? task : t) : [...tasks, task];
@@ -223,6 +225,8 @@ document.querySelectorAll('[data-filter-link]').forEach(link => link.addEventLis
 $('#searchInput').addEventListener('input', (event) => { query = event.target.value.trim(); render(); });
 $('#sortButton').addEventListener('click', () => { newestFirst = !newestFirst; render(); });
 rows.addEventListener('click', (event) => {
+  const completeBox = event.target.closest('[data-complete]');
+  if (completeBox) { const task = tasks.find(item => item.id === completeBox.dataset.complete); if (task) { task.done = completeBox.checked; saveTasks(); } return; }
   const reminderToggle = event.target.closest('[data-reminder-toggle]');
   if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders(); } return; }
   const reminderEdit = event.target.closest('[data-reminder-edit]');
