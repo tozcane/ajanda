@@ -56,6 +56,8 @@ function visibleTasks() {
   return tasks.filter((task) => {
     const text = `${task.title} ${task.location} ${task.details}`.toLocaleLowerCase('tr');
     if (query && !text.includes(query.toLocaleLowerCase('tr'))) return false;
+    if (activeFilter === 'done') return !!task.done;
+    if (task.done) return false;
     if (activeFilter === 'upcoming' && (task.published || !task.shootDate || task.shootDate < now)) return false;
     if (activeFilter === 'completed' && !task.published) return false;
     if (activeFilter === 'today' && task.shootDate !== now) return false;
@@ -71,7 +73,7 @@ function taskRow(task) {
     <td><div class="task-main"><span class="task-mark">✳</span><div><div class="task-name" title="${escapeHTML(task.title)}">${escapeHTML(task.title)}</div><div class="task-detail">${escapeHTML(task.details || 'Not eklenmedi')}</div></div></div></td>
     <td><div class="date-main">${dateValue(task.shootDate)}</div><div class="date-sub">${escapeHTML(task.shootTime || 'Saat belirtilmedi')}</div></td>
     <td class="location-cell" title="${escapeHTML(task.location)}">${escapeHTML(task.location || 'Yer belirtilmedi')}</td>
-    <td>${progressHTML}<div class="progress-caption">${progress}/3 tamamlandı</div></td>
+    <td>${progressHTML}</td>
     <td class="completion-cell"><input type="checkbox" data-complete="${task.id}" aria-label="Tamamlandı olarak işaretle" ${task.done ? 'checked' : ''}></td>
     <td class="published-cell ${task.published ? 'is-published' : ''}">${task.published ? dateValue(task.publishedDate || todayISO()) : '<span>—</span>'}</td>
     <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
@@ -95,7 +97,7 @@ function render() {
   const list = visibleTasks();
   const events = [
     ...list.map(item => ({kind:'shoot', date:item.shootDate || '', time:item.shootTime || '', item})),
-    ...reminders.map(item => ({kind:'reminder', date:item.date || '', time:item.time || '', item}))
+    ...(activeFilter === 'done' ? [] : reminders.map(item => ({kind:'reminder', date:item.date || '', time:item.time || '', item})))
   ].sort((a,b) => (a.date || '9999-12-31').localeCompare(b.date || '9999-12-31') || (a.time || '99:99').localeCompare(b.time || '99:99') || (a.item.createdAt || 0) - (b.item.createdAt || 0));
   const groups = [];
   for (const event of events) {
@@ -111,11 +113,14 @@ function render() {
   $('#emptyState h3').textContent = noItems ? 'İlk planını ekle' : 'Bu görünümde kayıt yok';
   $('#emptyState p').textContent = noItems ? 'Çekimlerini ve anımsatıcılarını günlerine göre burada takip et.' : 'Başka bir filtre seçebilir veya aramanı değiştirebilirsin.';
   $('#emptyAdd').style.display = noItems ? '' : 'none';
+  $('#listTitle').textContent = activeFilter === 'done' ? 'Bitenler' : 'Ajandan';
+  $('#listDescription').textContent = activeFilter === 'done' ? 'Tamamlandı olarak işaretlediğin çekimler.' : 'Çekimler ve anımsatıcılar günlerine göre.';
   $('#totalStat').textContent = tasks.length;
   $('#shootStat').textContent = tasks.filter(t => !t.shot).length;
   $('#editStat').textContent = tasks.filter(t => t.shot && !t.edited).length;
   $('#publishedStat').textContent = tasks.filter(t => t.published).length;
   const navCount = $('#navCount'); if (navCount) navCount.textContent = tasks.filter(t => !t.published).length;
+  $('#doneCount').textContent = tasks.filter(t => t.done).length;
   $('#allCount').textContent = tasks.length + reminders.length;
   $('#footerCount').textContent = `${events.length} kayıt gösteriliyor`;
   renderReminders();
@@ -225,10 +230,12 @@ $('#taskForm').addEventListener('submit', (event) => {
 $('.tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-filter]'); if (!button) return;
   activeFilter = button.dataset.filter;
-  document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button)); render();
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab === button));
+  document.querySelectorAll('.side-nav [data-filter-link]').forEach(link => link.classList.toggle('active', link.dataset.filterLink === activeFilter)); render();
 });
 document.querySelectorAll('[data-filter-link]').forEach(link => link.addEventListener('click', () => {
   activeFilter = link.dataset.filterLink;
+  document.querySelectorAll('.side-nav [data-filter-link]').forEach(item => item.classList.toggle('active', item.dataset.filterLink === activeFilter));
   document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.filter === activeFilter)); render();
 }));
 $('#searchInput').addEventListener('input', (event) => { query = event.target.value.trim(); render(); });
