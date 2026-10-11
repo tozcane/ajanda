@@ -19,7 +19,7 @@ function loadReminders() {
   catch { return []; }
 }
 function saveTasks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); render(); }
-function saveReminders() { localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); renderReminders(); }
+function saveReminders() { localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); render(); }
 function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 function dateForDisplay(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
@@ -76,23 +76,46 @@ function taskRow(task) {
     <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
   </tr>`;
 }
+function reminderRow(reminder) {
+  return `<tr class="timeline-reminder ${reminder.done ? 'is-done' : ''}">
+    <td><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
+    <td><div class="date-main">${escapeHTML(reminder.time || 'Saat yok')}</div><div class="date-sub">Anımsatıcı</div></td>
+    <td class="location-cell">—</td>
+    <td><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
+    <td>—</td><td><div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
+  </tr>`;
+}
+function dayLabel(value) {
+  if (!value) return 'Tarih belirtilmedi';
+  return new Date(`${value}T12:00:00`).toLocaleDateString('tr-TR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
 function render() {
   const list = visibleTasks();
-  rows.innerHTML = list.map(taskRow).join('');
-  const hasVisible = list.length > 0;
+  const events = [
+    ...list.map(item => ({kind:'shoot', date:item.shootDate || '', time:item.shootTime || '', item})),
+    ...reminders.map(item => ({kind:'reminder', date:item.date || '', time:item.time || '', item}))
+  ].sort((a,b) => (a.date || '9999-12-31').localeCompare(b.date || '9999-12-31') || (a.time || '99:99').localeCompare(b.time || '99:99') || (a.item.createdAt || 0) - (b.item.createdAt || 0));
+  const groups = [];
+  for (const event of events) {
+    let group = groups[groups.length - 1];
+    if (!group || group.date !== event.date) { group = {date:event.date,events:[]}; groups.push(group); }
+    group.events.push(event);
+  }
+  rows.innerHTML = groups.map(group => `<tr class="day-divider"><td colspan="6"><div class="day-label"><strong>${escapeHTML(dayLabel(group.date))}</strong><span>${group.events.length} kayıt</span></div></td></tr>` + group.events.map(event => event.kind === 'shoot' ? taskRow(event.item) : reminderRow(event.item)).join('')).join('');
+  const hasVisible = events.length > 0;
   $('.table-wrap').style.display = hasVisible ? '' : 'none';
   $('#emptyState').style.display = hasVisible ? 'none' : 'block';
-  const noTasks = tasks.length === 0;
-  $('#emptyState h3').textContent = noTasks ? 'İlk çekimini planla' : 'Burada içerik yok';
-  $('#emptyState p').textContent = noTasks ? 'Çekim fikirlerini ekle, sürecin her adımını kolayca takip et.' : 'Başka bir filtre seçebilir veya aramanı değiştirebilirsin.';
-  $('#emptyAdd').style.display = noTasks ? '' : 'none';
+  const noItems = tasks.length === 0 && reminders.length === 0;
+  $('#emptyState h3').textContent = noItems ? 'İlk planını ekle' : 'Bu görünümde kayıt yok';
+  $('#emptyState p').textContent = noItems ? 'Çekimlerini ve anımsatıcılarını günlerine göre burada takip et.' : 'Başka bir filtre seçebilir veya aramanı değiştirebilirsin.';
+  $('#emptyAdd').style.display = noItems ? '' : 'none';
   $('#totalStat').textContent = tasks.length;
   $('#shootStat').textContent = tasks.filter(t => !t.shot).length;
   $('#editStat').textContent = tasks.filter(t => t.shot && !t.edited).length;
   $('#publishedStat').textContent = tasks.filter(t => t.published).length;
   $('#navCount').textContent = tasks.filter(t => !t.published).length;
-  $('#allCount').textContent = tasks.length;
-  $('#footerCount').textContent = `${list.length} içerik gösteriliyor`;
+  $('#allCount').textContent = tasks.length + reminders.length;
+  $('#footerCount').textContent = `${events.length} kayıt gösteriliyor`;
   renderReminders();
 }
 function renderReminders() {
@@ -200,6 +223,12 @@ document.querySelectorAll('[data-filter-link]').forEach(link => link.addEventLis
 $('#searchInput').addEventListener('input', (event) => { query = event.target.value.trim(); render(); });
 $('#sortButton').addEventListener('click', () => { newestFirst = !newestFirst; render(); });
 rows.addEventListener('click', (event) => {
+  const reminderToggle = event.target.closest('[data-reminder-toggle]');
+  if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders(); } return; }
+  const reminderEdit = event.target.closest('[data-reminder-edit]');
+  if (reminderEdit) { const reminder = reminders.find(item => item.id === reminderEdit.dataset.reminderEdit); if (reminder) openReminder(reminder); return; }
+  const reminderDelete = event.target.closest('[data-reminder-delete]');
+  if (reminderDelete) { reminders = reminders.filter(item => item.id !== reminderDelete.dataset.reminderDelete); saveReminders(); notify('Anımsatıcı silindi.'); return; }
   const platformButton = event.target.closest('[data-platform]');
   if (platformButton) {
     const task = tasks.find(t => t.id === platformButton.dataset.id);
