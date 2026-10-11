@@ -32,6 +32,10 @@ alter table public.reminders enable row level security;
 grant select, insert, update, delete on public.shoots to authenticated;
 grant select, insert, update, delete on public.reminders to authenticated;
 
+drop policy if exists "Users can read their shoots" on public.shoots;
+drop policy if exists "Users can add their shoots" on public.shoots;
+drop policy if exists "Users can update their shoots" on public.shoots;
+drop policy if exists "Users can delete their shoots" on public.shoots;
 create policy "Users can read their shoots" on public.shoots
   for select to authenticated using ((select auth.uid()) = user_id);
 create policy "Users can add their shoots" on public.shoots
@@ -42,6 +46,10 @@ create policy "Users can update their shoots" on public.shoots
 create policy "Users can delete their shoots" on public.shoots
   for delete to authenticated using ((select auth.uid()) = user_id);
 
+drop policy if exists "Users can read their reminders" on public.reminders;
+drop policy if exists "Users can add their reminders" on public.reminders;
+drop policy if exists "Users can update their reminders" on public.reminders;
+drop policy if exists "Users can delete their reminders" on public.reminders;
 create policy "Users can read their reminders" on public.reminders
   for select to authenticated using ((select auth.uid()) = user_id);
 create policy "Users can add their reminders" on public.reminders
@@ -53,5 +61,16 @@ create policy "Users can delete their reminders" on public.reminders
   for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- Stream planner edits between signed-in devices.
-alter publication supabase_realtime add table public.shoots;
-alter publication supabase_realtime add table public.reminders;
+do $$
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    execute 'create publication supabase_realtime';
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'shoots') then
+    execute 'alter publication supabase_realtime add table public.shoots';
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'reminders') then
+    execute 'alter publication supabase_realtime add table public.reminders';
+  end if;
+end
+$$;
