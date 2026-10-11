@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261011-11">
+  <link rel="stylesheet" href="style.css?v=20261011-12">
 </head>
 <body>
   <div class="app-shell">
@@ -18,6 +18,12 @@
       <nav class="side-nav" aria-label="Ana menü">
         <a class="nav-link active" href="#agenda"><span class="nav-icon">▦</span> Çekim takvimi</a>
       </nav>
+      <section class="stats sidebar-stats" aria-label="İş özeti">
+        <article class="stat-card"><div class="stat-top"><span>Toplam içerik</span><span class="stat-icon lilac">▧</span></div><div class="stat-bottom"><strong id="totalStat">0</strong><span class="stat-note">planındaki tüm işler</span></div></article>
+        <article class="stat-card"><div class="stat-top"><span>Çekim bekliyor</span><span class="stat-icon amber">◷</span></div><div class="stat-bottom"><strong id="shootStat">0</strong><span class="stat-note">çekim yapılacak</span></div></article>
+        <article class="stat-card"><div class="stat-top"><span>Montajda</span><span class="stat-icon blue">✳</span></div><div class="stat-bottom"><strong id="editStat">0</strong><span class="stat-note">montaj bekliyor</span></div></article>
+        <article class="stat-card"><div class="stat-top"><span>Paylaşıldı</span><span class="stat-icon green">↗</span></div><div class="stat-bottom"><strong id="publishedStat">0</strong><span class="stat-note">yayında</span></div></article>
+      </section>
       <div class="sidebar-bottom"><div class="avatar">T</div><div><strong>Çekim alanım</strong><small>Kişisel çalışma alanı</small></div><span class="more">···</span></div>
     </aside>
 
@@ -26,13 +32,6 @@
       <section class="page-heading">
         <div><div class="eyebrow"><span class="eyebrow-dot"></span> İÇERİK ÜRETİMİ</div><h1>Çekim takvimi</h1><p>Fikrinden paylaşımına, tüm içeriklerin tek yerde.</p></div>
         <div class="heading-buttons"><button class="secondary-button" id="newReminder"><span class="plus">＋</span> Anımsatıcı ekle</button><button class="primary-button" id="newTask"><span class="plus">＋</span> Yeni çekim ekle</button></div>
-      </section>
-
-      <section class="stats" aria-label="İş özeti">
-        <article class="stat-card"><div class="stat-top"><span>Toplam içerik</span><span class="stat-icon lilac">▧</span></div><div class="stat-bottom"><strong id="totalStat">0</strong><span class="stat-note">planındaki tüm işler</span></div></article>
-        <article class="stat-card"><div class="stat-top"><span>Çekim bekliyor</span><span class="stat-icon amber">◷</span></div><div class="stat-bottom"><strong id="shootStat">0</strong><span class="stat-note">çekim yapılacak</span></div></article>
-        <article class="stat-card"><div class="stat-top"><span>Montajda</span><span class="stat-icon blue">✳</span></div><div class="stat-bottom"><strong id="editStat">0</strong><span class="stat-note">montaj bekliyor</span></div></article>
-        <article class="stat-card"><div class="stat-top"><span>Paylaşıldı</span><span class="stat-icon green">↗</span></div><div class="stat-bottom"><strong id="publishedStat">0</strong><span class="stat-note">yayında</span></div></article>
       </section>
 
       <section class="content-panel">
