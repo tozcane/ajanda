@@ -148,11 +148,10 @@ function taskRow(task) {
 }
 function reminderRow(reminder) {
   return `<tr class="timeline-reminder ${reminder.done ? 'is-done' : ''}">
-    <td><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
+    <td colspan="3"><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
     <td><div class="date-main">${dateValue(reminder.date)}</div><div class="date-sub">${escapeHTML(reminder.time || 'Saat belirtilmedi')}</div></td>
-    <td class="location-cell">—</td><td><span class="reminder-kind">Anımsatıcı</span></td>
     <td class="completion-cell"><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
-    <td>—</td><td><div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
+    <td colspan="2" class="reminder-actions-cell"><div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
   </tr>`;
 }
 function dayLabel(value) {

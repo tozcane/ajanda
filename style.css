@@ -75,14 +75,18 @@ table{min-width:900px}
 .task-main{min-width:140px}
 .location-cell{max-width:95px}
 .completion-cell{width:32px;padding-left:4px!important;padding-right:4px!important}
-table{min-width:860px;table-layout:fixed}
-thead th:nth-child(1),tbody td:nth-child(1){width:20%}
-thead th:nth-child(2),tbody td:nth-child(2){width:12%}
-thead th:nth-child(3),tbody td:nth-child(3){width:10%}
-thead th:nth-child(4),tbody td:nth-child(4){width:39%}
-thead th:nth-child(5),tbody td:nth-child(5){width:4%}
-thead th:nth-child(6),tbody td:nth-child(6){width:10%}
-thead th:nth-child(7),tbody td:nth-child(7){width:5%}
+table{width:100%;min-width:0;table-layout:auto}
+thead th:nth-child(1),tbody td:nth-child(1){width:28%}
+thead th:nth-child(2),tbody td:nth-child(2){width:13%;white-space:nowrap}
+thead th:nth-child(3),tbody td:nth-child(3){width:12%}
+thead th:nth-child(4),tbody td:nth-child(4){width:23%}
+thead th:nth-child(5),tbody td:nth-child(5){width:44px;text-align:center}
+thead th:nth-child(6),tbody td:nth-child(6){width:8%;text-align:center}
+thead th:nth-child(7),tbody td:nth-child(7){width:120px;text-align:right}
+.reminder-actions-cell{text-align:right;white-space:nowrap}
+.reminder-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap}
+.reminder-actions button{border:1px solid #e7e4f3;background:#fff;color:#6d57d1;padding:5px 8px;border-radius:6px;font:600 10px 'DM Sans';cursor:pointer;white-space:nowrap;transition:.15s}
+.reminder-actions button:hover{background:#f6f4ff}
 .progress-caption{display:none}
 
 /* ── Gece Modu (Dark Theme) ── */
@@ -523,18 +527,19 @@ html, body {
   tr.timeline-reminder {
     display: flex !important;
     flex-direction: column !important;
-    gap: 5px !important;
-    padding: 8px 10px !important;
+    gap: 6px !important;
+    padding: 9px 10px !important;
     margin-bottom: 6px !important;
     border-radius: 8px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    position: relative !important;
+    overflow: hidden !important;
   }
   tr.timeline-reminder > td {
     display: block !important;
     width: 100% !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
   }
   tr.timeline-reminder td:first-child .task-main {
     min-width: 0 !important;
@@ -551,23 +556,25 @@ html, body {
     gap: 6px !important;
     font-size: 11px !important;
   }
-  tr.timeline-reminder td:nth-child(3),
-  tr.timeline-reminder td:nth-child(4),
-  tr.timeline-reminder td:nth-child(5),
-  tr.timeline-reminder td:nth-child(6) {
+  tr.timeline-reminder .completion-cell {
     display: none !important;
   }
-  tr.timeline-reminder td:last-child {
+  tr.timeline-reminder .reminder-actions-cell {
     display: flex !important;
     justify-content: flex-end !important;
-    margin-top: 3px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-top: 2px !important;
   }
   .reminder-actions {
-    display: flex !important;
+    display: inline-flex !important;
     gap: 4px !important;
+    justify-content: flex-end !important;
+    max-width: 100% !important;
+    flex-wrap: wrap !important;
   }
   .reminder-actions button {
-    padding: 3px 6px !important;
+    padding: 4px 7px !important;
     font-size: 10px !important;
   }
 }
