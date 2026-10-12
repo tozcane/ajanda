@@ -310,9 +310,21 @@ async function refreshCloudData() {
     if (reminderResult.error) throw reminderResult.error;
     const remoteShoots = shootResult.data.map(shootFromRow);
     const remoteReminders = reminderResult.data.map(reminderFromRow);
-    // Cloud is authoritative: an empty cloud account must also clear stale device data.
-    tasks = remoteShoots;
-    reminders = remoteReminders;
+    const shootMigrationKey = `planim-cloud-migrated-${cloudUser.id}-shoots`;
+    const reminderMigrationKey = `planim-cloud-migrated-${cloudUser.id}-reminders`;
+    // On the first login, seed an empty cloud from this device instead of erasing local work.
+    if (!remoteShoots.length && tasks.length && !localStorage.getItem(shootMigrationKey)) {
+      if (await syncRows('shoots', tasks)) localStorage.setItem(shootMigrationKey, '1');
+    } else {
+      tasks = remoteShoots;
+      localStorage.setItem(shootMigrationKey, '1');
+    }
+    if (!remoteReminders.length && reminders.length && !localStorage.getItem(reminderMigrationKey)) {
+      if (await syncRows('reminders', reminders)) localStorage.setItem(reminderMigrationKey, '1');
+    } else {
+      reminders = remoteReminders;
+      localStorage.setItem(reminderMigrationKey, '1');
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
     render(); updateAccountButton();
