@@ -1,5 +1,5 @@
-const CACHE_NAME = 'planim-shell-v5';
-const APP_FILES = ['./', './index.html', './style.css?v=20261012-3', './app.js?v=20261012-6', './supabase-config.js'];
+const CACHE_NAME = 'planim-shell-v6';
+const APP_FILES = ['./', './index.html', './style.css?v=20261012-4', './app.js?v=20261012-7', './supabase-config.js', './manifest.webmanifest', './icons/icon-192.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));
@@ -19,4 +19,16 @@ self.addEventListener('fetch', event => {
     const cached = await caches.match(request);
     return cached || (request.mode === 'navigate' ? caches.match('./index.html') : Response.error());
   }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
+  );
 });

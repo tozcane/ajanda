@@ -8,7 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261012-3">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Planım">
+  <link rel="stylesheet" href="style.css?v=20261012-4">
 </head>
 <body>
   <div class="app-shell">
@@ -29,7 +35,7 @@
     </aside>
 
     <main class="main-content" id="agenda">
-      <header class="topbar"><div class="breadcrumb">Çekim takvimi <span>/</span> <strong>İçerik planı</strong></div><div class="top-actions"><span class="today-label" id="todayLabel"></span><button class="account-button" id="accountButton">Eşitleme kapalı</button></div></header>
+      <header class="topbar"><div class="breadcrumb">Çekim takvimi <span>/</span> <strong>İçerik planı</strong></div><div class="top-actions"><span class="today-label" id="todayLabel"></span><button class="account-button notification-button" id="notifyButton" title="Anımsatıcı bildirimlerini aç/kapat">🔔 Bildirimleri Aç</button><button class="account-button" id="accountButton">Eşitleme kapalı</button></div></header>
       <section class="page-heading">
         <div><div class="eyebrow"><span class="eyebrow-dot"></span> İÇERİK ÜRETİMİ</div><h1>Çekim takvimi</h1><p>Fikrinden paylaşımına, tüm içeriklerin tek yerde.</p></div>
         <div class="heading-buttons"><button class="secondary-button" id="newReminder"><span class="plus">＋</span> Anımsatıcı ekle</button><button class="primary-button" id="newTask"><span class="plus">＋</span> Yeni çekim ekle</button></div>
@@ -81,6 +87,6 @@
   <div class="toast" id="toast" role="status"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=20261012-6"></script>
+  <script src="app.js?v=20261012-7"></script>
 </body>
 </html>

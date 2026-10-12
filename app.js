@@ -143,7 +143,7 @@ function taskRow(task) {
     <td>${progressHTML}</td>
     <td class="completion-cell"><input type="checkbox" data-complete="${task.id}" aria-label="Tamamlandı olarak işaretle" ${task.done ? 'checked' : ''}></td>
     <td class="published-cell ${task.published ? 'is-published' : ''}">${task.published ? dateValue(task.publishedDate || todayISO()) : '<span>—</span>'}</td>
-    <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
+    <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button data-task-cal="${task.id}">📅 Takvime ekle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
   </tr>`;
 }
 function reminderRow(reminder) {
@@ -152,7 +152,7 @@ function reminderRow(reminder) {
     <td><div class="date-main">${dateValue(reminder.date)}</div><div class="date-sub">${escapeHTML(reminder.time || 'Saat belirtilmedi')}</div></td>
     <td class="location-cell">—</td><td><span class="reminder-kind">Anımsatıcı</span></td>
     <td class="completion-cell"><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
-    <td>—</td><td><div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
+    <td>—</td><td><div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
   </tr>`;
 }
 function dayLabel(value) {
@@ -199,7 +199,7 @@ function renderReminders() {
     <button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button>
     <div class="reminder-copy"><strong>${escapeHTML(reminder.title)}</strong><span>${escapeHTML(reminder.note || 'Not yok')}</span></div>
     <div class="reminder-when">${dateValue(reminder.date)}${reminder.time ? ` · ${escapeHTML(reminder.time)}` : ''}</div>
-    <div class="reminder-actions"><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
+    <div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
   </article>`).join('');
 }
 function openReminder(reminder) {
@@ -499,6 +499,10 @@ rows.addEventListener('click', (event) => {
     const menu = document.querySelector(`[data-actions="${menuButton.dataset.menu}"]`);
     document.querySelectorAll('.action-menu').forEach(m => { if (m !== menu) m.hidden = true; }); menu.hidden = !menu.hidden; return;
   }
+  const taskCal = event.target.closest('[data-task-cal]');
+  if (taskCal) { const task = tasks.find(t => t.id === taskCal.dataset.taskCal); if (task) { downloadShootICS(task); notify('Takvim dosyası (.ics) indirildi.'); } return; }
+  const reminderCal = event.target.closest('[data-reminder-cal]');
+  if (reminderCal) { const reminder = reminders.find(r => r.id === reminderCal.dataset.reminderCal); if (reminder) { downloadReminderICS(reminder); notify('Takvim dosyası (.ics) indirildi.'); } return; }
   const editButton = event.target.closest('[data-edit]');
   if (editButton) { const task = tasks.find(t => t.id === editButton.dataset.edit); openForm(task); return; }
   const deleteButton = event.target.closest('[data-delete]');
@@ -507,11 +511,197 @@ rows.addEventListener('click', (event) => {
 $('#reminderList').addEventListener('click', (event) => {
   const toggle = event.target.closest('[data-reminder-toggle]');
   if (toggle) { const reminder = reminders.find(item => item.id === toggle.dataset.reminderToggle); reminder.done = !reminder.done; saveReminders(); return; }
+  const cal = event.target.closest('[data-reminder-cal]');
+  if (cal) { const reminder = reminders.find(item => item.id === cal.dataset.reminderCal); if (reminder) { downloadReminderICS(reminder); notify('Takvim dosyası (.ics) indirildi.'); } return; }
   const edit = event.target.closest('[data-reminder-edit]');
   if (edit) { openReminder(reminders.find(item => item.id === edit.dataset.reminderEdit)); return; }
   const remove = event.target.closest('[data-reminder-delete]');
   if (remove) { reminders = reminders.filter(item => item.id !== remove.dataset.reminderDelete); saveReminders({deleteId:remove.dataset.reminderDelete}); notify('Anımsatıcı silindi.'); }
 });
 document.addEventListener('click', (event) => { if (!event.target.closest('.row-actions')) document.querySelectorAll('.action-menu').forEach(m => m.hidden = true); });
+
+// ── Bildirimler & Takvim (.ics) ──
+const NOTIFIED_KEY = 'planim-notified-reminders-v1';
+function getNotifiedIds() {
+  try { return JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); } catch { return []; }
+}
+function markAsNotified(id) {
+  const ids = getNotifiedIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify(ids.slice(-200)));
+  }
+}
+function notifyUser(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const options = {
+    body,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: tag || 'planim-alert',
+    renotify: true
+  };
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, options);
+    }).catch(() => {
+      try { new Notification(title, options); } catch {}
+    });
+  } else {
+    try { new Notification(title, options); } catch {}
+  }
+}
+function checkDueReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const todayStr = todayISO();
+  const curH = String(now.getHours()).padStart(2, '0');
+  const curM = String(now.getMinutes()).padStart(2, '0');
+  const curTime = `${curH}:${curM}`;
+  const notified = getNotifiedIds();
+
+  reminders.forEach(r => {
+    if (r.done) return;
+    if (notified.includes(r.id)) return;
+    if (!r.date) return;
+
+    const isDue = (r.date < todayStr) || (r.date === todayStr && (!r.time || r.time <= curTime));
+    if (isDue) {
+      markAsNotified(r.id);
+      notifyUser(`⏰ Anımsatıcı: ${r.title}`, r.note || (r.time ? `Saat: ${r.time}` : 'Vakti geldi!'), `reminder-${r.id}`);
+    }
+  });
+}
+function updateNotifyButton() {
+  const btn = $('#notifyButton');
+  if (!btn) return;
+  if (!('Notification' in window)) {
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    btn.textContent = '🔔 Bildirimler Açık';
+    btn.classList.add('enabled');
+    btn.title = 'Anımsatıcı saatinde bildirim alacaksın';
+  } else {
+    btn.textContent = '🔔 Bildirimleri Aç';
+    btn.classList.remove('enabled');
+    btn.title = 'Anımsatıcı saatinde bildirim almak için tıkla';
+  }
+}
+async function handleNotifyButtonClick() {
+  if (!('Notification' in window)) {
+    notify('Tarayıcın bildirimleri desteklemiyor.');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    notifyUser('🔔 Bildirimler Aktif', 'Anımsatıcılarının vakti geldiğinde buradan bildirim alacaksın.');
+    notify('Bildirimler zaten açık.');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    notify('Bildirim izni engellenmiş. Tarayıcı adres çubuğundaki kilit simgesinden izin verebilirsin.');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  updateNotifyButton();
+  if (perm === 'granted') {
+    notifyUser('🔔 Bildirimler Açıldı', 'Anımsatıcılarının vakti geldiğinde buradan bildirim alacaksın.');
+    notify('Bildirimler aktif edildi!');
+    checkDueReminders();
+  } else {
+    notify('Bildirim izni verilmedi.');
+  }
+}
+
+function downloadReminderICS(reminder) {
+  const [y, m, d] = (reminder.date || todayISO()).split('-').map(Number);
+  const [h, min] = (reminder.time || '09:00').split(':').map(Number);
+  const start = new Date(y, m - 1, d, h, min, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const stamp = (dt) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const pad = (n) => String(n).padStart(2, '0');
+  const dtStr = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
+  const endStr = `${end.getFullYear()}${pad(end.getMonth()+1)}${pad(end.getDate())}T${pad(end.getHours())}${pad(end.getMinutes())}00`;
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Planim//TR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${reminder.id || Date.now()}@planim`,
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${dtStr}`,
+    `DTEND:${endStr}`,
+    `SUMMARY:Anımsatıcı: ${reminder.title}`,
+    reminder.note ? `DESCRIPTION:${reminder.note.replace(/\n/g, '\\n')}` : '',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT15M',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:${reminder.title}`,
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${reminder.title || 'animsatici'}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadShootICS(task) {
+  const [y, m, d] = (task.shootDate || todayISO()).split('-').map(Number);
+  const [h, min] = (task.shootTime || '10:00').split(':').map(Number);
+  const start = new Date(y, m - 1, d, h, min, 0);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const stamp = (dt) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const pad = (n) => String(n).padStart(2, '0');
+  const dtStr = `${y}${pad(m)}${pad(d)}T${pad(h)}${pad(min)}00`;
+  const endStr = `${end.getFullYear()}${pad(end.getMonth()+1)}${pad(end.getDate())}T${pad(end.getHours())}${pad(end.getMinutes())}00`;
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Planim//TR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${task.id || Date.now()}@planim`,
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${dtStr}`,
+    `DTEND:${endStr}`,
+    `SUMMARY:Çekim: ${task.title}`,
+    task.location ? `LOCATION:${task.location}` : '',
+    task.details ? `DESCRIPTION:${task.details.replace(/\n/g, '\\n')}` : '',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT1H',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:Çekim: ${task.title}`,
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${task.title || 'cekim'}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('#notifyButton')?.addEventListener('click', handleNotifyButtonClick);
+updateNotifyButton();
+setInterval(checkDueReminders, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDueReminders(); });
+
 $('#todayLabel').textContent = new Date().toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
 initializeCloud();
+setTimeout(checkDueReminders, 1500);
