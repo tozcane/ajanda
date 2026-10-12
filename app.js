@@ -310,21 +310,17 @@ async function refreshCloudData() {
     if (reminderResult.error) throw reminderResult.error;
     const remoteShoots = shootResult.data.map(shootFromRow);
     const remoteReminders = reminderResult.data.map(reminderFromRow);
-    const shootMigrationKey = `planim-cloud-migrated-${cloudUser.id}-shoots`;
-    const reminderMigrationKey = `planim-cloud-migrated-${cloudUser.id}-reminders`;
-    // On the first login, seed an empty cloud from this device instead of erasing local work.
-    if (!remoteShoots.length && tasks.length && !localStorage.getItem(shootMigrationKey)) {
-      if (await syncRows('shoots', tasks)) localStorage.setItem(shootMigrationKey, '1');
-    } else {
-      tasks = remoteShoots;
-      localStorage.setItem(shootMigrationKey, '1');
-    }
-    if (!remoteReminders.length && reminders.length && !localStorage.getItem(reminderMigrationKey)) {
-      if (await syncRows('reminders', reminders)) localStorage.setItem(reminderMigrationKey, '1');
-    } else {
-      reminders = remoteReminders;
-      localStorage.setItem(reminderMigrationKey, '1');
-    }
+    // Merge by id: cloud values win for records already synced, while local-only
+    // records survive login and are added to the cloud instead of being discarded.
+    const mergeAndUploadLocalOnly = async (table, localItems, remoteItems) => {
+      const remoteIds = new Set(remoteItems.map(item => item.id));
+      const localOnly = localItems.filter(item => !remoteIds.has(item.id));
+      const merged = [...remoteItems, ...localOnly];
+      if (localOnly.length && !(await syncRows(table, localOnly))) queueSync(table, merged);
+      return merged;
+    };
+    tasks = await mergeAndUploadLocalOnly('shoots', tasks, remoteShoots);
+    reminders = await mergeAndUploadLocalOnly('reminders', reminders, remoteReminders);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
     render(); updateAccountButton();
