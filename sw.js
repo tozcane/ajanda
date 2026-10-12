@@ -1,5 +1,5 @@
-const CACHE_NAME = 'planim-shell-v6';
-const APP_FILES = ['./', './index.html', './style.css?v=20261012-4', './app.js?v=20261012-7', './supabase-config.js', './manifest.webmanifest', './icons/icon-192.png'];
+const CACHE_NAME = 'planim-shell-v7';
+const APP_FILES = ['./', './index.html', './style.css?v=20261012-5', './app.js?v=20261012-8', './supabase-config.js', './manifest.webmanifest', './icons/icon-192.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));

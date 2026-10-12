@@ -702,6 +702,37 @@ updateNotifyButton();
 setInterval(checkDueReminders, 30000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDueReminders(); });
 
+// ── Gece / Gündüz Modu (Dark Mode) ──
+const THEME_KEY = 'planim-theme-preference';
+function applyTheme(pref) {
+  const root = document.documentElement;
+  const isDark = pref === 'dark' || (pref === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  updateThemeButton(isDark);
+}
+function updateThemeButton(isDark) {
+  const btn = $('#themeToggle');
+  if (!btn) return;
+  btn.innerHTML = isDark ? '☀️' : '🌙';
+  btn.title = isDark ? 'Gündüz moduna geç' : 'Gece moduna geç';
+  btn.setAttribute('aria-label', btn.title);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+const savedTheme = localStorage.getItem(THEME_KEY) || 'auto';
+applyTheme(savedTheme);
+$('#themeToggle')?.addEventListener('click', toggleTheme);
+try {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((localStorage.getItem(THEME_KEY) || 'auto') === 'auto') applyTheme('auto');
+  });
+} catch {}
+
 $('#todayLabel').textContent = new Date().toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
 initializeCloud();
 setTimeout(checkDueReminders, 1500);
