@@ -347,8 +347,17 @@ function initializeCloud() {
   }
   cloudReady = true;
   cloud = window.supabase.createClient(config.url, config.publishableKey, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } });
-  cloud.auth.onAuthStateChange((_event, session) => {
+  cloud.auth.onAuthStateChange((event, session) => {
     cloudUser = session?.user || null; updateAccountButton();
+    if (event === 'PASSWORD_RECOVERY') {
+      window.setTimeout(async () => {
+        const newPassword = window.prompt('Yeni şifreni belirle (en az 8 karakter):');
+        if (!newPassword || newPassword.length < 8) { notify('Şifre en az 8 karakter olmalı.'); return; }
+        const { error } = await cloud.auth.updateUser({ password:newPassword });
+        if (error) notify(`Şifre güncellenemedi: ${error.message}`);
+        else window.alert('Şifren güncellendi. Artık yeni şifrenle giriş yapabilirsin.');
+      }, 0);
+    }
     if (cloudUser) { hideDialog(authDialog); subscribeToCloudChanges(); window.setTimeout(async () => { await flushSyncQueue(); refreshCloudData(); }, 0); }
     else if (realtimeChannel) { cloud.removeChannel(realtimeChannel); realtimeChannel = null; }
   });
@@ -369,6 +378,17 @@ $('#accountButton').addEventListener('click', async () => {
   setAuthMessage(''); showDialog(authDialog);
 });
 $('#closeAuth').addEventListener('click', () => hideDialog(authDialog));
+$('#forgotPassword').addEventListener('click', async () => {
+  const email = $('#authEmail').value.trim();
+  if (!email) { $('#authEmail').focus(); setAuthMessage('Önce e-posta adresini yaz.'); return; }
+  const button = $('#forgotPassword'); button.disabled = true; setAuthMessage('Sıfırlama bağlantısı gönderiliyor…');
+  try {
+    const { error } = await cloud.auth.resetPasswordForEmail(email, { redirectTo:'https://tozcane.github.io/ajanda/' });
+    if (error) throw error;
+    setAuthMessage('Şifre yenileme bağlantısını e-postana gönderdim. Gelen kutunu ve spam klasörünü kontrol et.', true);
+  } catch (error) { setAuthMessage(error.message || 'Şifre yenileme e-postası gönderilemedi.'); }
+  finally { button.disabled = false; }
+});
 $('#authModeToggle').addEventListener('click', () => {
   authMode = authMode === 'sign-in' ? 'sign-up' : 'sign-in';
   const signup = authMode === 'sign-up';
