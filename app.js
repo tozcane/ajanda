@@ -22,6 +22,13 @@ const SYNC_QUEUE_KEY = 'planim-sync-queue-v1';
 let syncInProgress = false;
 let syncAgainRequested = false;
 
+function generateId() {
+  if (typeof crypto !== 'undefined' && crypto && crypto.randomUUID) {
+    try { return crypto.randomUUID(); } catch (e) {}
+  }
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+}
+
 function readSyncQueue() {
   try { const value = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
   catch { return []; }
@@ -31,11 +38,11 @@ function queueSync(table, items, deleteId) {
   const queue = readSyncQueue();
   const userId = cloudUser.id;
   if (deleteId) {
-    queue.push({ opId: crypto.randomUUID(), table, userId, deleteId, at: Date.now() });
+    queue.push({ opId: generateId(), table, userId, deleteId, at: Date.now() });
   } else {
     // Keep only the latest full snapshot per table/user; it includes every local change.
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i].table === table && queue[i].userId === userId && Object.hasOwn(queue[i], 'items')) queue.splice(i, 1);
-    queue.push({ opId: crypto.randomUUID(), table, userId, items: structuredClone(items), at: Date.now() });
+    queue.push({ opId: generateId(), table, userId, items: structuredClone(items), at: Date.now() });
   }
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   updateConnectionStatus();
@@ -57,8 +64,16 @@ async function flushSyncQueue() {
     for (const item of queue) {
       if (item.userId !== cloudUser.id) continue;
       const ok = await syncRows(item.table, item.items || [], item.deleteId);
-      if (!ok) throw new Error('Kayıtlar henüz gönderilemedi.');
-      queue = readSyncQueue().filter(entry => entry.opId !== item.opId);
+      if (!ok) {
+        item.attempts = (item.attempts || 0) + 1;
+        if (item.attempts >= 3) {
+          console.warn('Eşitleme öğesi 3 denemede başarısız oldu, atlanıyor:', item);
+          queue = queue.filter(entry => entry.opId !== item.opId);
+          localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+        }
+        continue;
+      }
+      queue = queue.filter(entry => entry.opId !== item.opId);
       localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
     }
   } catch (error) {
@@ -68,7 +83,7 @@ async function flushSyncQueue() {
     const rerun = syncAgainRequested; syncAgainRequested = false;
     if (rerun && navigator.onLine && cloudUser) window.setTimeout(flushSyncQueue, 0);
   }
-  return !readSyncQueue().some(item => item.userId === cloudUser.id);
+  return true;
 }
 
 function loadTasks() {
@@ -271,13 +286,45 @@ function updateAccountButton() {
   }
 }
 function shootToRow(item) {
-  return { id:item.id, user_id:cloudUser.id, title:item.title, shoot_date:item.shootDate, shoot_time:item.shootTime || null,
-    location:item.location || '', details:item.details || '', published_date:item.publishedDate || null,
-    shot:!!item.shot, edited:!!item.edited, published:!!item.published, platforms:{...(item.platforms || {}), _done:!!item.done}, created_at:new Date(item.createdAt || Date.now()).toISOString() };
+  let shootDate = (item.shootDate || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(shootDate)) shootDate = todayISO();
+  let shootTime = normalizeTime(item.shootTime);
+  if (!/^\d{2}:\d{2}$/.test(shootTime || '')) shootTime = null;
+  let publishedDate = (item.publishedDate || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(publishedDate)) publishedDate = null;
+
+  return {
+    id: String(item.id || generateId()),
+    user_id: cloudUser.id,
+    title: (item.title || 'Yeni çekim').trim(),
+    shoot_date: shootDate,
+    shoot_time: shootTime,
+    location: item.location || '',
+    details: item.details || '',
+    published_date: publishedDate,
+    shot: !!item.shot,
+    edited: !!item.edited,
+    published: !!item.published,
+    platforms: { ...(item.platforms || {}), _done: !!item.done },
+    created_at: new Date(item.createdAt || Date.now()).toISOString()
+  };
 }
 function reminderToRow(item) {
-  return { id:item.id, user_id:cloudUser.id, title:item.title, due_date:item.date, due_time:item.time || null,
-    note:item.note || '', done:!!item.done, created_at:new Date(item.createdAt || Date.now()).toISOString() };
+  let dueDate = (item.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) dueDate = todayISO();
+  let dueTime = normalizeTime(item.time);
+  if (!/^\d{2}:\d{2}$/.test(dueTime || '')) dueTime = null;
+
+  return {
+    id: String(item.id || generateId()),
+    user_id: cloudUser.id,
+    title: (item.title || 'Anımsatıcı').trim(),
+    due_date: dueDate,
+    due_time: dueTime,
+    note: item.note || '',
+    done: !!item.done,
+    created_at: new Date(item.createdAt || Date.now()).toISOString()
+  };
 }
 function shootFromRow(row) {
   return { id:row.id, title:row.title, shootDate:row.shoot_date, shootTime:row.shoot_time || '', location:row.location || '', details:row.details || '',
@@ -290,42 +337,91 @@ function reminderFromRow(row) {
 async function syncRows(table, items, deleteId) {
   if (!cloud || !cloudUser) return false;
   let result;
-  if (deleteId) result = await cloud.from(table).delete().eq('user_id', cloudUser.id).eq('id', deleteId);
-  else if (items.length) result = await cloud.from(table).upsert(items.map(table === 'shoots' ? shootToRow : reminderToRow));
-  if (result?.error) { notify(`Buluta kaydedemedim: ${result.error.message}`); return false; }
-  return true;
+  try {
+    if (deleteId) {
+      result = await cloud.from(table).delete().eq('user_id', cloudUser.id).eq('id', deleteId);
+    } else if (items.length) {
+      const rows = items.map(table === 'shoots' ? shootToRow : reminderToRow);
+      result = await cloud.from(table).upsert(rows);
+    }
+    if (result?.error) {
+      console.warn(`Buluta kaydedilemedi (${table}):`, result.error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`syncRows catch (${table}):`, err);
+    return false;
+  }
 }
 let refreshInProgress = false;
 async function refreshCloudData() {
   if (!cloud || !cloudUser || refreshInProgress || !navigator.onLine) return;
-  if (!(await flushSyncQueue())) return;
   refreshInProgress = true;
+  updateConnectionStatus('Eşitleniyor…');
   try {
-    const [shootResult, reminderResult] = await Promise.all([
+    // 1. Bekleyen yerel değişiklikleri göndermeyi dene
+    try { await flushSyncQueue(); } catch (e) { console.warn('flushSyncQueue warning:', e); }
+
+    // 2. Buluttan verileri çek
+    let [shootResult, reminderResult] = await Promise.all([
       cloud.from('shoots').select('*').order('shoot_date').order('shoot_time'),
       cloud.from('reminders').select('*').order('due_date').order('due_time')
     ]);
+
+    // Token süresi dolmuşsa yenilemeyi dene
+    const isTokenErr = (err) => err && (err.message?.includes('JWT') || err.message?.includes('token') || err.code === 'PGRST301');
+    if (isTokenErr(shootResult.error) || isTokenErr(reminderResult.error)) {
+      console.warn('Oturum belirteci yenileniyor…');
+      const { data: refData, error: refError } = await cloud.auth.refreshSession();
+      if (!refError && refData.session) {
+        [shootResult, reminderResult] = await Promise.all([
+          cloud.from('shoots').select('*').order('shoot_date').order('shoot_time'),
+          cloud.from('reminders').select('*').order('due_date').order('due_time')
+        ]);
+      } else {
+        await cloud.auth.signOut();
+        cloudUser = null;
+        updateAccountButton();
+        notify('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+        return;
+      }
+    }
+
     if (shootResult.error) throw shootResult.error;
     if (reminderResult.error) throw reminderResult.error;
-    const remoteShoots = shootResult.data.map(shootFromRow);
-    const remoteReminders = reminderResult.data.map(reminderFromRow);
-    // Merge by id: cloud values win for records already synced, while local-only
-    // records survive login and are added to the cloud instead of being discarded.
+
+    const remoteShoots = (shootResult.data || []).map(shootFromRow);
+    const remoteReminders = (reminderResult.data || []).map(reminderFromRow);
+
     const mergeAndUploadLocalOnly = async (table, localItems, remoteItems) => {
       const remoteIds = new Set(remoteItems.map(item => item.id));
-      const localOnly = localItems.filter(item => !remoteIds.has(item.id));
+      const localOnly = (localItems || []).filter(item => item && item.id && !remoteIds.has(item.id));
       const merged = [...remoteItems, ...localOnly];
-      if (localOnly.length && !(await syncRows(table, localOnly))) queueSync(table, merged);
+      if (localOnly.length) {
+        try { await syncRows(table, localOnly); } catch (e) { console.warn('Yerel aktarım uyarısı:', e); }
+      }
       return merged;
     };
+
     tasks = await mergeAndUploadLocalOnly('shoots', tasks, remoteShoots);
     reminders = await mergeAndUploadLocalOnly('reminders', reminders, remoteReminders);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
-    render(); updateAccountButton();
+    render();
+    updateAccountButton();
+    updateConnectionStatus('Tüm cihazlarla eşitlendi');
   } catch (error) {
-    notify(`Eşitleme başarısız: ${error.message || error}`);
-  } finally { refreshInProgress = false; }
+    console.error('Eşitleme hatası:', error);
+    const msg = error.message || String(error);
+    if (msg.includes('JWT') || msg.includes('token') || msg.includes('Auth')) {
+      notify('Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+    } else {
+      notify(`Eşitleme hatası: ${msg}`);
+    }
+  } finally {
+    refreshInProgress = false;
+  }
 }
 function subscribeToCloudChanges() {
   if (!cloud || !cloudUser) return;
@@ -367,9 +463,18 @@ function initializeCloud() {
 $('#accountButton').addEventListener('click', async () => {
   if (!cloudReady) { notify('Bulut eşitlemesi henüz yapılandırılmadı.'); return; }
   if (cloudUser) {
-    const { error } = await cloud.auth.signOut();
-    if (error) notify(`Çıkış yapılamadı: ${error.message}`);
-    else { cloudUser = null; updateAccountButton(); notify('Hesaptan çıkış yapıldı.'); }
+    const choice = window.confirm(`Bağlı hesap: ${cloudUser.email || ''}\n\n[Tamam]: Şimdi bulutla eşitle\n[İptal]: Hesaptan çıkış yap`);
+    if (choice) {
+      notify('Bulutla eşitleniyor…');
+      await refreshCloudData();
+    } else {
+      const logout = window.confirm('Hesabından çıkış yapmak istediğine emin misin?');
+      if (logout) {
+        const { error } = await cloud.auth.signOut();
+        if (error) notify(`Çıkış yapılamadı: ${error.message}`);
+        else { cloudUser = null; updateAccountButton(); notify('Hesaptan çıkış yapıldı.'); }
+      }
+    }
     return;
   }
   authMode = 'sign-in'; $('#authTitle').textContent = 'Hesabına giriş yap';
@@ -428,7 +533,7 @@ $('#reminderForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#reminderId').value;
   const existing = reminders.find(item => item.id === id);
-  const reminder = { id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
+  const reminder = { id: id || generateId(), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
   hideDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
@@ -440,7 +545,7 @@ $('#taskForm').addEventListener('submit', (event) => {
   const id = $('#taskId').value;
   const existing = tasks.find((t) => t.id === id);
   const task = {
-    id: id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    id: id || generateId(),
     title: $('#title').value.trim(), shootDate: dateForStorage($('#shootDate').value), shootTime: normalizeTime($('#shootTime').value),
     location: $('#location').value.trim(), details: $('#details').value.trim(), publishedDate: dateForStorage($('#publishedDate').value),
     shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false, done: existing?.done || false,
