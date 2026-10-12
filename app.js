@@ -147,8 +147,8 @@ function visibleTasks() {
   }).sort((a,b) => compareScheduled(a, b, 'shootDate', 'shootTime') * (newestFirst ? -1 : 1));
 }
 function taskRow(task) {
-  const progress = progressed(task);
   const platforms = task.platforms || {};
+  const stageBox = (stage, label, symbol) => `<button class="stage-box ${task[stage] ? 'done' : ''}" data-stage="${stage}" data-id="${task.id}" aria-pressed="${!!task[stage]}"><span class="stage-check">${task[stage] ? '✓' : symbol}</span><span>${label}</span></button>`;
   const shortName = (n) => n === 'Instagram' ? 'Insta' : (n === 'YouTube' ? 'YT' : n);
   const progressHTML = `<div class="stage-grid">${stageBox('shot','Çekim','◷')}${stageBox('edited','Montaj','✳')}<div class="stage-box share-box ${task.published ? 'done' : ''}"><span class="share-title"><span class="stage-check">${task.published ? '✓' : '↗'}</span> Paylaşım</span><div class="platforms">${['Instagram','LinkedIn','YouTube'].map(name => `<button class="platform ${platforms[name] ? 'selected' : ''}" data-platform="${name}" data-id="${task.id}" aria-pressed="${!!platforms[name]}" title="${name}"><span class="plat-full">${name}</span><span class="plat-short">${shortName(name)}</span></button>`).join('')}</div></div></div>`;
   return `<tr class="timeline-shoot ${task.done ? 'is-complete' : ''}">
