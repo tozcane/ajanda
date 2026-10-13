@@ -58,14 +58,19 @@ thead th:nth-child(7),tbody td:nth-child(7){width:44px;text-align:right}
 
 /* Çekim · Montaj · Paylaşım (Ferah ve esnek aşama kutuları) */
 .stage-grid{display:flex!important;align-items:center!important;gap:5px!important;width:100%!important;min-width:0!important}
-.stage-box{min-height:32px!important;border:1px solid #eae8e2!important;border-radius:7px!important;background:#fff!important;color:#77756f!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;padding:4px 7px!important;font:600 10px 'DM Sans',sans-serif!important;cursor:pointer!important;white-space:nowrap!important;flex:0 0 auto!important}
-.stage-box.done{border-color:#cce8d8!important;background:#f0f9f3!important;color:#2f8f61!important}
-.share-box{flex:1 1 auto!important;min-width:120px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:stretch!important;gap:3px!important;padding:3px 6px!important;border:1px solid #eae8e2!important;border-radius:7px!important;background:#fff!important;box-sizing:border-box!important}
-.share-box.done{border-color:#cce8d8!important;background:#f0f9f3!important}
+.stage-box{min-height:32px!important;border:1px solid #eae8e2!important;border-radius:7px!important;background:#fff!important;color:#77756f!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;padding:4px 7px!important;font:600 10px 'DM Sans',sans-serif!important;cursor:pointer!important;white-space:nowrap!important;flex:0 0 auto!important;transition:background .15s, border-color .15s, color .15s}
+.stage-box.done{border-color:#b8141a!important;background:#d71920!important;color:#ffffff!important;font-weight:700!important}
+.stage-box.done .stage-check{background:rgba(255,255,255,0.28)!important;color:#ffffff!important;font-weight:700!important}
+.stage-box.done:hover{background:#b8141a!important;border-color:#991015!important}
+.share-box{flex:1 1 auto!important;min-width:120px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:stretch!important;gap:3px!important;padding:3px 6px!important;border:1px solid #eae8e2!important;border-radius:7px!important;background:#fff!important;box-sizing:border-box!important;transition:background .15s, border-color .15s}
+.share-box.done{border-color:#d71920!important;background:#fff5f5!important}
+.share-box.done .share-title{color:#d71920!important;font-weight:700!important}
+.share-box.done .stage-check{background:#d71920!important;color:#ffffff!important;font-weight:700!important}
 .share-title{display:flex!important;align-items:center!important;gap:4px!important;font-size:9.5px!important;font-weight:600!important;line-height:1.1!important;white-space:nowrap!important}
 .platforms{display:flex!important;gap:3px!important;width:100%!important;min-width:0!important}
-.platform{flex:1 1 0!important;min-width:0!important;padding:3px 2px!important;font-size:8.5px!important;font-weight:600!important;text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;border-radius:4px!important;border:1px solid #eae8e2!important;background:#fff!important;color:#77756f!important;cursor:pointer!important}
-.platform.selected{border-color:#9a88e8!important;background:#f1edff!important;color:#654ec7!important}
+.platform{flex:1 1 0!important;min-width:0!important;padding:3px 2px!important;font-size:8.5px!important;font-weight:600!important;text-align:center!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;border-radius:4px!important;border:1px solid #eae8e2!important;background:#fff!important;color:#77756f!important;cursor:pointer!important;transition:background .15s, border-color .15s, color .15s}
+.platform.selected{border-color:#b8141a!important;background:#d71920!important;color:#ffffff!important;font-weight:700!important}
+.platform.selected:hover{background:#b8141a!important;border-color:#991015!important}
 .plat-short{display:none!important}
 @media(max-width:900px){.plat-full{display:none!important}.plat-short{display:inline!important}}
 
@@ -128,12 +133,17 @@ thead th:nth-child(7),tbody td:nth-child(7){width:44px;text-align:right}
 [data-theme="dark"] .day-divider .day-label{color:#c4b6ff!important}
 [data-theme="dark"] .day-label span{color:#8e87b3!important}
 [data-theme="dark"] .stage-box{background:#262335;border-color:#353247;color:#a5a2b8}
-[data-theme="dark"] .stage-box.done{border-color:#276140;background:#183826;color:#55d697}
+[data-theme="dark"] .stage-box.done{border-color:#e02424!important;background:#c5161d!important;color:#ffffff!important;font-weight:700!important}
 [data-theme="dark"] .stage-check{background:#1d1b28;color:#888599}
-[data-theme="dark"] .stage-box.done .stage-check{background:#1d4d33;color:#63e3a4}
+[data-theme="dark"] .stage-box.done .stage-check{background:rgba(255,255,255,0.25)!important;color:#ffffff!important;font-weight:700!important}
+[data-theme="dark"] .stage-box.done:hover{background:#b8141a!important}
 [data-theme="dark"] .share-box{background:#262335}
+[data-theme="dark"] .share-box.done{border-color:#e02424!important;background:#291418!important}
+[data-theme="dark"] .share-box.done .share-title{color:#ff6b6b!important;font-weight:700!important}
+[data-theme="dark"] .share-box.done .stage-check{background:#c5161d!important;color:#ffffff!important;font-weight:700!important}
 [data-theme="dark"] .platform{background:#1f1d2c;border-color:#353247;color:#9d9aa8}
-[data-theme="dark"] .platform.selected{border-color:#7b62e6;background:#372a6b;color:#cfc2ff}
+[data-theme="dark"] .platform.selected{border-color:#e02424!important;background:#c5161d!important;color:#ffffff!important;font-weight:700!important}
+[data-theme="dark"] .platform.selected:hover{background:#b8141a!important}
 [data-theme="dark"] .completion-cell input{background:#252233;border-color:#4a465e}
 [data-theme="dark"] .reminder-item{border-color:var(--line)}
 [data-theme="dark"] .reminder-copy strong{color:var(--ink)}
