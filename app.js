@@ -3,6 +3,7 @@ const $ = (selector) => document.querySelector(selector);
 const rows = $('#taskRows');
 const dialog = $('#taskDialog');
 const reminderDialog = $('#reminderDialog');
+const detailDialog = $('#detailDialog');
 const authDialog = $('#authDialog');
 function showDialog(target) { if (typeof target.showModal === 'function') target.showModal(); else target.setAttribute('open', ''); }
 function hideDialog(target) { if (typeof target.close === 'function' && target.open) target.close(); else target.removeAttribute('open'); }
@@ -151,6 +152,7 @@ function taskRow(task) {
   const stageBox = (stage, label, symbol) => `<button class="stage-box ${task[stage] ? 'done' : ''}" data-stage="${stage}" data-id="${task.id}" aria-pressed="${!!task[stage]}"><span class="stage-check">${task[stage] ? '✓' : symbol}</span><span>${label}</span></button>`;
   const shortName = (n) => n === 'Instagram' ? 'Insta' : (n === 'YouTube' ? 'YT' : n);
   const progressHTML = `<div class="stage-grid">${stageBox('shot','Çekim','◷')}${stageBox('edited','Montaj','✳')}<div class="stage-box share-box ${task.published ? 'done' : ''}"><span class="share-title"><span class="stage-check">${task.published ? '✓' : '↗'}</span> Paylaşım</span><div class="platforms">${['Instagram','LinkedIn','YouTube'].map(name => `<button class="platform ${platforms[name] ? 'selected' : ''}" data-platform="${name}" data-id="${task.id}" aria-pressed="${!!platforms[name]}" title="${name}"><span class="plat-full">${name}</span><span class="plat-short">${shortName(name)}</span></button>`).join('')}</div></div></div>`;
+  const hasCaption = !!(task.caption && task.caption.trim());
   return `<tr class="timeline-shoot ${task.done ? 'is-complete' : ''}">
     <td><div class="task-main"><span class="task-mark">✳</span><div><div class="task-name" title="${escapeHTML(task.title)}">${escapeHTML(task.title)}</div><div class="task-detail">${escapeHTML(task.details || 'Not eklenmedi')}</div></div></div></td>
     <td><div class="date-main">${dateValue(task.shootDate)}</div><div class="date-sub">${escapeHTML(task.shootTime || 'Saat belirtilmedi')}</div></td>
@@ -158,15 +160,33 @@ function taskRow(task) {
     <td>${progressHTML}</td>
     <td class="completion-cell"><input type="checkbox" data-complete="${task.id}" aria-label="Tamamlandı olarak işaretle" ${task.done ? 'checked' : ''}></td>
     <td class="published-cell ${task.published ? 'is-published' : ''}">${task.published ? dateValue(task.publishedDate || todayISO()) : '<span>—</span>'}</td>
-    <td class="row-actions"><button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button><div class="action-menu" data-actions="${task.id}" hidden><button data-edit="${task.id}">Düzenle</button><button data-task-cal="${task.id}">📅 Takvime ekle</button><button class="delete" data-delete="${task.id}">Sil</button></div></td>
+    <td class="row-actions">
+      <button class="detail-btn ${hasCaption ? 'has-content' : ''}" data-detail="${task.id}" data-kind="shoot" title="${hasCaption ? escapeHTML(task.caption) : 'Paylaşım yazısı ve ayrıntı ekle'}"><span class="detail-icon">📝</span> Ayrıntı${hasCaption ? ' <span class="detail-badge">✓</span>' : ''}</button>
+      <button class="menu-button" data-menu="${task.id}" aria-label="İçerik seçenekleri">···</button>
+      <div class="action-menu" data-actions="${task.id}" hidden>
+        <button data-detail="${task.id}" data-kind="shoot">📝 Ayrıntı / Paylaşım Metni</button>
+        <button data-edit="${task.id}">Düzenle</button>
+        <button data-task-cal="${task.id}">📅 Takvime ekle</button>
+        <button class="delete" data-delete="${task.id}">Sil</button>
+      </div>
+    </td>
   </tr>`;
 }
 function reminderRow(reminder) {
+  const content = (reminder.note || reminder.caption || '').trim();
+  const hasContent = !!content;
   return `<tr class="timeline-reminder ${reminder.done ? 'is-done' : ''}">
     <td colspan="3"><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
     <td><div class="date-main">${dateValue(reminder.date)}</div><div class="date-sub">${escapeHTML(reminder.time || 'Saat belirtilmedi')}</div></td>
     <td class="completion-cell"><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
-    <td colspan="2" class="reminder-actions-cell"><div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div></td>
+    <td colspan="2" class="reminder-actions-cell">
+      <div class="reminder-actions">
+        <button class="detail-btn ${hasContent ? 'has-content' : ''}" data-detail="${reminder.id}" data-kind="reminder" title="${hasContent ? escapeHTML(content) : 'Ayrıntı ve not ekle'}"><span class="detail-icon">📝</span> Ayrıntı${hasContent ? ' <span class="detail-badge">✓</span>' : ''}</button>
+        <button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button>
+        <button data-reminder-edit="${reminder.id}">Düzenle</button>
+        <button data-reminder-delete="${reminder.id}">Sil</button>
+      </div>
+    </td>
   </tr>`;
 }
 function dayLabel(value) {
@@ -213,14 +233,19 @@ function renderReminders() {
     <button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button>
     <div class="reminder-copy"><strong>${escapeHTML(reminder.title)}</strong><span>${escapeHTML(reminder.note || 'Not yok')}</span></div>
     <div class="reminder-when">${dateValue(reminder.date)}${reminder.time ? ` · ${escapeHTML(reminder.time)}` : ''}</div>
-    <div class="reminder-actions"><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
+    <div class="reminder-actions"><button class="detail-btn ${(reminder.note || reminder.caption) ? 'has-content' : ''}" data-detail="${reminder.id}" data-kind="reminder"><span class="detail-icon">📝</span> Ayrıntı${(reminder.note || reminder.caption) ? ' <span class="detail-badge">✓</span>' : ''}</button><button data-reminder-cal="${reminder.id}" title="iPhone / Google Takvime ekle">📅 Takvim</button><button data-reminder-edit="${reminder.id}">Düzenle</button><button data-reminder-delete="${reminder.id}">Sil</button></div>
   </article>`).join('');
 }
 function openReminder(reminder) {
   $('#reminderForm').reset();
   $('#reminderId').value = reminder?.id || '';
   $('#reminderDialogTitle').textContent = reminder ? 'Anımsatıcıyı düzenle' : 'Yeni anımsatıcı';
-  if (reminder) { $('#reminderTitle').value = reminder.title; $('#reminderDate').value = dateForDisplay(reminder.date); $('#reminderTime').value = reminder.time || ''; $('#reminderNote').value = reminder.note || ''; }
+  if (reminder) {
+    $('#reminderTitle').value = reminder.title;
+    $('#reminderDate').value = dateForDisplay(reminder.date);
+    $('#reminderTime').value = reminder.time || '';
+    $('#reminderNote').value = reminder.note || reminder.caption || '';
+  }
   showDialog(reminderDialog); setTimeout(() => $('#reminderTitle').focus(), 50);
 }
 function openForm(task) {
@@ -230,7 +255,11 @@ function openForm(task) {
   if (task) {
     $('#title').value = task.title; $('#shootDate').value = dateForDisplay(task.shootDate);
     $('#shootTime').value = task.shootTime || ''; $('#location').value = task.location || '';
-    $('#details').value = task.details || ''; $('#publishedDate').value = dateForDisplay(task.publishedDate || '');
+    $('#details').value = task.details || '';
+    if ($('#taskCaption')) $('#taskCaption').value = task.caption || '';
+    $('#publishedDate').value = dateForDisplay(task.publishedDate || '');
+  } else {
+    if ($('#taskCaption')) $('#taskCaption').value = '';
   }
   showDialog(dialog);
   setTimeout(() => $('#title').focus(), 50);
@@ -293,6 +322,13 @@ function shootToRow(item) {
   let publishedDate = (item.publishedDate || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(publishedDate)) publishedDate = null;
 
+  const platformsObj = { ...(item.platforms || {}), _done: !!item.done };
+  if (item.caption && item.caption.trim()) {
+    platformsObj._caption = item.caption.trim();
+  } else {
+    delete platformsObj._caption;
+  }
+
   return {
     id: String(item.id || generateId()),
     user_id: cloudUser.id,
@@ -305,7 +341,7 @@ function shootToRow(item) {
     shot: !!item.shot,
     edited: !!item.edited,
     published: !!item.published,
-    platforms: { ...(item.platforms || {}), _done: !!item.done },
+    platforms: platformsObj,
     created_at: new Date(item.createdAt || Date.now()).toISOString()
   };
 }
@@ -315,24 +351,53 @@ function reminderToRow(item) {
   let dueTime = normalizeTime(item.time);
   if (!/^\d{2}:\d{2}$/.test(dueTime || '')) dueTime = null;
 
+  const noteText = (item.note || item.caption || '').trim();
+
   return {
     id: String(item.id || generateId()),
     user_id: cloudUser.id,
     title: (item.title || 'Anımsatıcı').trim(),
     due_date: dueDate,
     due_time: dueTime,
-    note: item.note || '',
+    note: noteText,
     done: !!item.done,
     created_at: new Date(item.createdAt || Date.now()).toISOString()
   };
 }
 function shootFromRow(row) {
-  return { id:row.id, title:row.title, shootDate:row.shoot_date, shootTime:row.shoot_time || '', location:row.location || '', details:row.details || '',
-    publishedDate:row.published_date || '', shot:row.shot, edited:row.edited, published:row.published, done:!!row.platforms?._done, platforms:Object.fromEntries(Object.entries(row.platforms || {}).filter(([key]) => key !== '_done')), createdAt:new Date(row.created_at).getTime() || Date.now() };
+  const rowPlatforms = row.platforms || {};
+  const cleanPlatforms = Object.fromEntries(
+    Object.entries(rowPlatforms).filter(([key]) => key !== '_done' && key !== '_caption')
+  );
+  return {
+    id: row.id,
+    title: row.title,
+    shootDate: row.shoot_date,
+    shootTime: row.shoot_time || '',
+    location: row.location || '',
+    details: row.details || '',
+    caption: rowPlatforms._caption || '',
+    publishedDate: row.published_date || '',
+    shot: row.shot,
+    edited: row.edited,
+    published: row.published,
+    done: !!rowPlatforms._done,
+    platforms: cleanPlatforms,
+    createdAt: new Date(row.created_at).getTime() || Date.now()
+  };
 }
 function reminderFromRow(row) {
-  return { id:row.id, title:row.title, date:row.due_date, time:row.due_time || '', note:row.note || '', done:row.done,
-    createdAt:new Date(row.created_at).getTime() || Date.now() };
+  const noteText = row.note || '';
+  return {
+    id: row.id,
+    title: row.title,
+    date: row.due_date,
+    time: row.due_time || '',
+    note: noteText,
+    caption: noteText,
+    done: row.done,
+    createdAt: new Date(row.created_at).getTime() || Date.now()
+  };
 }
 async function syncRows(table, items, deleteId) {
   if (!cloud || !cloudUser) return false;
@@ -533,7 +598,17 @@ $('#reminderForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#reminderId').value;
   const existing = reminders.find(item => item.id === id);
-  const reminder = { id: id || generateId(), title: $('#reminderTitle').value.trim(), date: dateForStorage($('#reminderDate').value), time: normalizeTime($('#reminderTime').value), note: $('#reminderNote').value.trim(), done: existing?.done || false, createdAt: existing?.createdAt || Date.now() };
+  const noteVal = $('#reminderNote').value.trim();
+  const reminder = {
+    id: id || generateId(),
+    title: $('#reminderTitle').value.trim(),
+    date: dateForStorage($('#reminderDate').value),
+    time: normalizeTime($('#reminderTime').value),
+    note: noteVal,
+    caption: noteVal,
+    done: existing?.done || false,
+    createdAt: existing?.createdAt || Date.now()
+  };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
   hideDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
@@ -544,10 +619,13 @@ $('#taskForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const id = $('#taskId').value;
   const existing = tasks.find((t) => t.id === id);
+  const captionVal = $('#taskCaption') ? $('#taskCaption').value.trim() : (existing?.caption || '');
   const task = {
     id: id || generateId(),
     title: $('#title').value.trim(), shootDate: dateForStorage($('#shootDate').value), shootTime: normalizeTime($('#shootTime').value),
-    location: $('#location').value.trim(), details: $('#details').value.trim(), publishedDate: dateForStorage($('#publishedDate').value),
+    location: $('#location').value.trim(), details: $('#details').value.trim(),
+    caption: captionVal,
+    publishedDate: dateForStorage($('#publishedDate').value),
     shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false, done: existing?.done || false,
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
@@ -574,6 +652,13 @@ rows.addEventListener('change', (event) => {
   if (task) { task.done = checkbox.checked; saveTasks(); }
 });
 rows.addEventListener('click', (event) => {
+  const detailButton = event.target.closest('[data-detail]');
+  if (detailButton) {
+    const id = detailButton.dataset.detail;
+    const kind = detailButton.dataset.kind || 'shoot';
+    openDetailDialog(id, kind);
+    return;
+  }
   const reminderToggle = event.target.closest('[data-reminder-toggle]');
   if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders(); } return; }
   const reminderEdit = event.target.closest('[data-reminder-edit]');
@@ -613,6 +698,11 @@ rows.addEventListener('click', (event) => {
   if (deleteButton) { const task = tasks.find(t => t.id === deleteButton.dataset.delete); tasks = tasks.filter(t => t.id !== deleteButton.dataset.delete); saveTasks({deleteId:task.id}); notify(`“${task.title}” silindi.`); }
 });
 $('#reminderList').addEventListener('click', (event) => {
+  const detailBtn = event.target.closest('[data-detail]');
+  if (detailBtn) {
+    openDetailDialog(detailBtn.dataset.detail, 'reminder');
+    return;
+  }
   const toggle = event.target.closest('[data-reminder-toggle]');
   if (toggle) { const reminder = reminders.find(item => item.id === toggle.dataset.reminderToggle); reminder.done = !reminder.done; saveReminders(); return; }
   const cal = event.target.closest('[data-reminder-cal]');
@@ -623,6 +713,100 @@ $('#reminderList').addEventListener('click', (event) => {
   if (remove) { reminders = reminders.filter(item => item.id !== remove.dataset.reminderDelete); saveReminders({deleteId:remove.dataset.reminderDelete}); notify('Anımsatıcı silindi.'); }
 });
 document.addEventListener('click', (event) => { if (!event.target.closest('.row-actions')) document.querySelectorAll('.action-menu').forEach(m => m.hidden = true); });
+
+// ── Ayrıntı / Paylaşım Metni Diyalogu ──
+function openDetailDialog(id, kind) {
+  const item = kind === 'shoot' ? tasks.find(t => t.id === id) : reminders.find(r => r.id === id);
+  if (!item) return;
+
+  $('#detailTargetId').value = id;
+  $('#detailTargetKind').value = kind;
+  $('#detailEyebrow').textContent = kind === 'shoot' ? 'ÇEKİM · PAYLAŞIM METNİ' : 'ANIMSATICI · AYRINTI';
+  $('#detailTitle').textContent = item.title || 'Ayrıntı';
+
+  const captionText = kind === 'shoot' ? (item.caption || '') : (item.note || item.caption || '');
+  $('#detailCaption').value = captionText;
+  updateDetailCharCount();
+
+  let metaHTML = '';
+  if (kind === 'shoot') {
+    const parts = [];
+    if (item.shootDate) parts.push(`📅 ${dateValue(item.shootDate)}${item.shootTime ? ` ${item.shootTime}` : ''}`);
+    if (item.location) parts.push(`📍 ${escapeHTML(item.location)}`);
+    const activePlats = ['Instagram','LinkedIn','YouTube'].filter(p => item.platforms?.[p]);
+    if (activePlats.length) parts.push(`↗ ${activePlats.join(', ')}`);
+    metaHTML = parts.map(p => `<span class="detail-tag">${p}</span>`).join('');
+  } else {
+    const parts = [];
+    if (item.date) parts.push(`📅 ${dateValue(item.date)}${item.time ? ` ${item.time}` : ''}`);
+    metaHTML = parts.map(p => `<span class="detail-tag">${p}</span>`).join('');
+  }
+  const metaEl = $('#detailMeta');
+  if (metaEl) {
+    metaEl.innerHTML = metaHTML;
+    metaEl.style.display = metaHTML ? 'flex' : 'none';
+  }
+
+  showDialog(detailDialog);
+  setTimeout(() => {
+    $('#detailCaption').focus();
+    $('#detailCaption').setSelectionRange($('#detailCaption').value.length, $('#detailCaption').value.length);
+  }, 50);
+}
+
+function updateDetailCharCount() {
+  const len = $('#detailCaption')?.value.length || 0;
+  const el = $('#detailCharCount');
+  if (el) el.textContent = `${len} karakter`;
+}
+
+$('#detailCaption')?.addEventListener('input', updateDetailCharCount);
+$('#closeDetail')?.addEventListener('click', () => hideDialog(detailDialog));
+$('#cancelDetail')?.addEventListener('click', () => hideDialog(detailDialog));
+detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) hideDialog(detailDialog); });
+
+$('#copyCaptionBtn')?.addEventListener('click', async () => {
+  const text = ($('#detailCaption')?.value || '').trim();
+  if (!text) { notify('Kopyalanacak bir metin yazılmamış.'); return; }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      $('#detailCaption').select();
+      document.execCommand('copy');
+    }
+    notify('Paylaşım metni panoya kopyalandı! 📋');
+  } catch (e) {
+    $('#detailCaption').select();
+    document.execCommand('copy');
+    notify('Paylaşım metni kopyalandı! 📋');
+  }
+});
+
+$('#detailForm')?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const id = $('#detailTargetId').value;
+  const kind = $('#detailTargetKind').value;
+  const caption = $('#detailCaption').value.trim();
+
+  if (kind === 'shoot') {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      task.caption = caption;
+      saveTasks();
+      notify('Paylaşım metni kaydedildi.');
+    }
+  } else if (kind === 'reminder') {
+    const reminder = reminders.find(r => r.id === id);
+    if (reminder) {
+      reminder.note = caption;
+      reminder.caption = caption;
+      saveReminders();
+      notify('Anımsatıcı ayrıntısı kaydedildi.');
+    }
+  }
+  hideDialog(detailDialog);
+});
 
 // ── Bildirimler & Takvim (.ics) ──
 const NOTIFIED_KEY = 'planim-notified-reminders-v1';

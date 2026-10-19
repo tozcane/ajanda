@@ -48,13 +48,13 @@
 .timeline-reminder .reminder-actions button:hover{color:#6e57d4}
 .reminder-kind{font-size:10px;color:#8b8983}
 table{width:100%;min-width:0;table-layout:auto;border-collapse:collapse}
-thead th:nth-child(1),tbody td:nth-child(1){width:24%}
-thead th:nth-child(2),tbody td:nth-child(2){width:12%;white-space:nowrap}
-thead th:nth-child(3),tbody td:nth-child(3){width:11%}
-thead th:nth-child(4),tbody td:nth-child(4){width:36%;min-width:250px}
+thead th:nth-child(1),tbody td:nth-child(1){width:22%}
+thead th:nth-child(2),tbody td:nth-child(2){width:11%;white-space:nowrap}
+thead th:nth-child(3),tbody td:nth-child(3){width:10%}
+thead th:nth-child(4),tbody td:nth-child(4){width:33%;min-width:240px}
 thead th:nth-child(5),tbody td:nth-child(5){width:36px;text-align:center}
 thead th:nth-child(6),tbody td:nth-child(6){width:9%;text-align:center}
-thead th:nth-child(7),tbody td:nth-child(7){width:44px;text-align:right}
+thead th:nth-child(7),tbody td:nth-child(7){width:auto;min-width:110px;text-align:right}
 
 /* Çekim · Montaj · Paylaşım (Ferah ve esnek aşama kutuları) */
 .stage-grid{display:flex!important;align-items:center!important;gap:5px!important;width:100%!important;min-width:0!important}
@@ -74,10 +74,25 @@ thead th:nth-child(7),tbody td:nth-child(7){width:44px;text-align:right}
 .plat-short{display:none!important}
 @media(max-width:900px){.plat-full{display:none!important}.plat-short{display:inline!important}}
 
+.row-actions{display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;position:relative!important;white-space:nowrap!important}
 .reminder-actions-cell{text-align:right;white-space:nowrap}
 .reminder-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap}
 .reminder-actions button{border:1px solid #e7e4f3;background:#fff;color:#6d57d1;padding:5px 8px;border-radius:6px;font:600 10px 'DM Sans';cursor:pointer;white-space:nowrap;transition:.15s}
 .reminder-actions button:hover{background:#f6f4ff}
+
+/* Ayrıntı Butonu & Diyalogu */
+.detail-btn{border:1px solid #e1dcfa!important;background:#f6f4fe!important;color:#5c44c8!important;padding:5px 8px!important;border-radius:6px!important;font:600 10.5px 'DM Sans',sans-serif!important;cursor:pointer!important;display:inline-flex!important;align-items:center!important;gap:4px!important;white-space:nowrap!important;transition:all .15s ease!important;line-height:1!important}
+.detail-btn:hover{background:#ede8fd!important;border-color:#bbaaf2!important;color:#4931b6!important}
+.detail-btn.has-content{border-color:#b9a7fc!important;background:#ece6ff!important;color:#4d30c2!important;font-weight:700!important}
+.detail-icon{font-size:11px}
+.detail-badge{color:#1f8e53;font-weight:800;font-size:10px}
+.detail-dialog{max-width:520px}
+.detail-meta-pill{display:flex;flex-wrap:wrap;gap:6px;margin:-10px 0 16px}
+.detail-tag{background:#f1effb;color:#644ec2;font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px}
+.detail-textarea-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.copy-caption-btn{border:1px solid #dcd8f3;background:#fff;color:#634cb9;padding:5px 10px;border-radius:6px;font:600 11px 'DM Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.15s}
+.copy-caption-btn:hover{background:#f5f2ff;border-color:#baa4ff}
+.char-count{font-size:10px;color:#9c9993}
 .progress-caption{display:none}
 
 /* ── Gece Modu (Dark Theme) ── */
@@ -163,6 +178,14 @@ thead th:nth-child(7),tbody td:nth-child(7){width:44px;text-align:right}
 [data-theme="dark"] .field input,[data-theme="dark"] .field textarea{background:#171622;border-color:#39354a;color:var(--ink)}
 [data-theme="dark"] .field input:focus,[data-theme="dark"] .field textarea:focus{border-color:#927af5;box-shadow:0 0 0 3px rgba(146,122,245,0.2)}
 [data-theme="dark"] .picker-trigger{background:#2f2752;color:#baa7ff}
+[data-theme="dark"] .detail-btn{background:#262138!important;border-color:#3f375c!important;color:#baaaff!important}
+[data-theme="dark"] .detail-btn:hover{background:#322c4a!important;border-color:#5c5087!important;color:#ded6ff!important}
+[data-theme="dark"] .detail-btn.has-content{background:#312652!important;border-color:#614cb5!important;color:#e1d9ff!important}
+[data-theme="dark"] .detail-badge{color:#55d697}
+[data-theme="dark"] .detail-tag{background:#26213a;color:#b5a4ff}
+[data-theme="dark"] .copy-caption-btn{background:#262238;border-color:#3e3759;color:#baaaff}
+[data-theme="dark"] .copy-caption-btn:hover{background:#332d4b;border-color:#5d5187;color:#ffffff}
+[data-theme="dark"] .char-count{color:#8b879e}
 
 /* ── Telefon & Tablet Uyumlu Duyarlı Düzen (Sıfır Yatay Kaydırma) ── */
 html, body {
