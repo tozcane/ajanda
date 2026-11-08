@@ -210,9 +210,9 @@ function visibleTasks() {
 }
 function taskRow(task) {
   const platforms = task.platforms || {};
-  const stageBox = (stage, label, symbol) => `<button class="stage-box ${task[stage] ? 'done' : ''}" data-stage="${stage}" data-id="${task.id}" aria-pressed="${!!task[stage]}"><span class="stage-check">${task[stage] ? '✓' : symbol}</span><span>${label}</span></button>`;
+  const stageBox = (stage, label, symbol, shortLabel) => `<button class="stage-box ${task[stage] ? 'done' : ''}" data-stage="${stage}" data-id="${task.id}" aria-pressed="${!!task[stage]}" title="${label}"><span class="stage-check">${task[stage] ? '✓' : symbol}</span><span>${shortLabel ? `<span class="lbl-full">${label}</span><span class="lbl-short">${shortLabel}</span>` : label}</span></button>`;
   const shortName = (n) => n === 'Instagram' ? 'Insta' : (n === 'YouTube' ? 'YT' : n);
-  const progressHTML = `<div class="stage-grid">${stageBox('shot','Çekim','◷')}${stageBox('edited','Montaj','✳')}<div class="stage-box share-box ${task.published ? 'done' : ''}"><span class="share-title"><span class="stage-check">${task.published ? '✓' : '↗'}</span> Paylaşım</span><div class="platforms">${['Instagram','LinkedIn','YouTube'].map(name => `<button class="platform ${platforms[name] ? 'selected' : ''}" data-platform="${name}" data-id="${task.id}" aria-pressed="${!!platforms[name]}" title="${name}"><span class="plat-full">${name}</span><span class="plat-short">${shortName(name)}</span></button>`).join('')}</div></div></div>`;
+  const progressHTML = `<div class="stage-grid">${stageBox('shot','Çekim','◷')}${stageBox('edited','Montaj','✳')}${stageBox('approvalSent','Onaya Gönderildi','✉','Onay')}<div class="stage-box share-box ${task.published ? 'done' : ''}"><span class="share-title"><span class="stage-check">${task.published ? '✓' : '↗'}</span> Paylaşım</span><div class="platforms">${['Instagram','LinkedIn','YouTube'].map(name => `<button class="platform ${platforms[name] ? 'selected' : ''}" data-platform="${name}" data-id="${task.id}" aria-pressed="${!!platforms[name]}" title="${name}"><span class="plat-full">${name}</span><span class="plat-short">${shortName(name)}</span></button>`).join('')}</div></div></div>`;
   const hasCaption = !!(task.caption && task.caption.trim());
   return `<tr class="timeline-shoot ${task.done ? 'is-complete' : ''}">
     <td><div class="task-main"><span class="task-mark">✳</span><div><div class="task-name" title="${escapeHTML(task.title)}">${escapeHTML(task.title)}</div><div class="task-detail">${escapeHTML(task.details || 'Not eklenmedi')}</div></div></div></td>
@@ -383,7 +383,7 @@ function shootToRow(item) {
   let publishedDate = (item.publishedDate || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(publishedDate)) publishedDate = null;
 
-  const platformsObj = { ...(item.platforms || {}), _done: !!item.done };
+  const platformsObj = { ...(item.platforms || {}), _done: !!item.done, _approvalSent: !!item.approvalSent };
   if (item.caption && item.caption.trim()) {
     platformsObj._caption = item.caption.trim();
   } else {
@@ -428,7 +428,7 @@ function reminderToRow(item) {
 function shootFromRow(row) {
   const rowPlatforms = row.platforms || {};
   const cleanPlatforms = Object.fromEntries(
-    Object.entries(rowPlatforms).filter(([key]) => key !== '_done' && key !== '_caption')
+    Object.entries(rowPlatforms).filter(([key]) => key !== '_done' && key !== '_caption' && key !== '_approvalSent')
   );
   return {
     id: row.id,
@@ -441,6 +441,7 @@ function shootFromRow(row) {
     publishedDate: row.published_date || '',
     shot: row.shot,
     edited: row.edited,
+    approvalSent: !!rowPlatforms._approvalSent,
     published: row.published,
     done: !!rowPlatforms._done,
     platforms: cleanPlatforms,
@@ -721,7 +722,7 @@ $('#taskForm').addEventListener('submit', (event) => {
     location: $('#location').value.trim(), details: $('#details').value.trim(),
     caption: captionVal,
     publishedDate: dateForStorage($('#publishedDate').value),
-    shot: existing?.shot || false, edited: existing?.edited || false, published: existing?.published || false, done: existing?.done || false,
+    shot: existing?.shot || false, edited: existing?.edited || false, approvalSent: existing?.approvalSent || false, published: existing?.published || false, done: existing?.done || false,
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
   tasks = existing ? tasks.map(t => t.id === id ? task : t) : [...tasks, task];
@@ -776,7 +777,9 @@ rows.addEventListener('click', (event) => {
     const task = tasks.find(t => t.id === stageButton.dataset.id); const stage = stageButton.dataset.stage;
     task[stage] = !task[stage];
     if (stage === 'published') task.publishedDate = task.published ? (task.publishedDate || todayISO()) : '';
-    saveTasks({ item: task }); notify(task[stage] ? `${stage === 'shot' ? 'Çekildi' : stage === 'edited' ? 'Montajlandı' : 'Paylaşıldı'} olarak işaretlendi.` : 'Aşama güncellendi.'); return;
+    saveTasks({ item: task });
+    const stageName = stage === 'shot' ? 'Çekildi' : stage === 'edited' ? 'Montajlandı' : stage === 'approvalSent' ? 'Onaya gönderildi' : 'Paylaşıldı';
+    notify(task[stage] ? `${stageName} olarak işaretlendi.` : 'Aşama güncellendi.'); return;
   }
   const menuButton = event.target.closest('[data-menu]');
   if (menuButton) {
