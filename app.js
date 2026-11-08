@@ -36,15 +36,37 @@ function readSyncQueue() {
 }
 function queueSync(table, items, deleteId) {
   if (!cloudUser) return;
-  const queue = readSyncQueue();
+  let queue = readSyncQueue();
   const userId = cloudUser.id;
+
   if (deleteId) {
-    queue.push({ opId: generateId(), table, userId, deleteId, at: Date.now() });
-  } else {
-    // Keep only the latest full snapshot per table/user; it includes every local change.
-    for (let i = queue.length - 1; i >= 0; i--) if (queue[i].table === table && queue[i].userId === userId && Object.hasOwn(queue[i], 'items')) queue.splice(i, 1);
-    queue.push({ opId: generateId(), table, userId, items: structuredClone(items), at: Date.now() });
+    // Sırada bekleyen ekleme/güncellemelerden bu ID'yi kaldır ki silinen öğe tekrar yüklenmesin
+    queue = queue.filter(entry => {
+      if (entry.table !== table || entry.userId !== userId) return true;
+      if (entry.deleteId === deleteId) return false;
+      if (entry.item && entry.item.id === deleteId) return false;
+      if (Array.isArray(entry.items)) {
+        entry.items = entry.items.filter(it => it.id !== deleteId);
+        return entry.items.length > 0;
+      }
+      return true;
+    });
+    queue.push({ opId: generateId(), table, userId, type: 'delete', deleteId, at: Date.now() });
+  } else if (items) {
+    const list = Array.isArray(items) ? items : [items];
+    for (const item of list) {
+      if (!item || !item.id) continue;
+      // Bu öğe için sıradaki eski kayıt veya silme emrini kaldır, en güncelini ekle
+      queue = queue.filter(entry => {
+        if (entry.table !== table || entry.userId !== userId) return true;
+        if (entry.deleteId === item.id) return false;
+        if (entry.item && entry.item.id === item.id) return false;
+        return true;
+      });
+      queue.push({ opId: generateId(), table, userId, type: 'upsert', item: structuredClone(item), at: Date.now() });
+    }
   }
+
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   updateConnectionStatus();
   if (navigator.onLine) flushSyncQueue();
@@ -62,27 +84,40 @@ async function flushSyncQueue() {
   syncInProgress = true; updateConnectionStatus('Eşitleniyor…');
   try {
     let queue = readSyncQueue();
-    for (const item of queue) {
-      if (item.userId !== cloudUser.id) continue;
-      const ok = await syncRows(item.table, item.items || [], item.deleteId);
-      if (!ok) {
-        item.attempts = (item.attempts || 0) + 1;
-        if (item.attempts >= 3) {
-          console.warn('Eşitleme öğesi 3 denemede başarısız oldu, atlanıyor:', item);
-          queue = queue.filter(entry => entry.opId !== item.opId);
+    const toProcess = queue.filter(entry => entry.userId === cloudUser.id);
+    for (const entry of toProcess) {
+      let ok = false;
+      if (entry.type === 'delete' || entry.deleteId) {
+        const id = entry.deleteId || entry.id;
+        ok = await syncRows(entry.table, [], id);
+      } else {
+        const itemsToUpsert = entry.item ? [entry.item] : (entry.items || []);
+        if (!itemsToUpsert.length) ok = true;
+        else ok = await syncRows(entry.table, itemsToUpsert);
+      }
+
+      queue = readSyncQueue();
+      if (ok) {
+        queue = queue.filter(entryItem => entryItem.opId !== entry.opId);
+        localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+      } else {
+        const currentEntry = queue.find(entryItem => entryItem.opId === entry.opId);
+        if (currentEntry) {
+          currentEntry.attempts = (currentEntry.attempts || 0) + 1;
+          if (currentEntry.attempts >= 4) {
+            console.warn('Eşitleme öğesi 4 denemede başarısız oldu, atlanıyor:', currentEntry);
+            queue = queue.filter(entryItem => entryItem.opId !== entry.opId);
+          }
           localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
         }
-        continue;
       }
-      queue = queue.filter(entry => entry.opId !== item.opId);
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
     }
   } catch (error) {
-    console.warn('Eşitleme kuyruğu bekliyor:', error);
+    console.warn('Eşitleme kuyruğu beklenmedik hata:', error);
   } finally {
     syncInProgress = false; updateConnectionStatus();
     const rerun = syncAgainRequested; syncAgainRequested = false;
-    if (rerun && navigator.onLine && cloudUser) window.setTimeout(flushSyncQueue, 0);
+    if (rerun && navigator.onLine && cloudUser) window.setTimeout(flushSyncQueue, 100);
   }
   return true;
 }
@@ -97,11 +132,37 @@ function loadReminders() {
 }
 function saveTasks(options = {}) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); render();
-  queueSync('shoots', tasks, options.deleteId);
+  let deleteId = null;
+  let itemsToSync = null;
+  if (typeof options === 'string') {
+    deleteId = options;
+  } else if (options && options.deleteId) {
+    deleteId = options.deleteId;
+  } else if (options && options.item) {
+    itemsToSync = [options.item];
+  } else if (options && options.id) {
+    itemsToSync = [options];
+  } else {
+    itemsToSync = tasks;
+  }
+  queueSync('shoots', itemsToSync, deleteId);
 }
 function saveReminders(options = {}) {
   localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders)); render();
-  queueSync('reminders', reminders, options.deleteId);
+  let deleteId = null;
+  let itemsToSync = null;
+  if (typeof options === 'string') {
+    deleteId = options;
+  } else if (options && options.deleteId) {
+    deleteId = options.deleteId;
+  } else if (options && options.item) {
+    itemsToSync = [options.item];
+  } else if (options && options.id) {
+    itemsToSync = [options];
+  } else {
+    itemsToSync = reminders;
+  }
+  queueSync('reminders', itemsToSync, deleteId);
 }
 function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 function dateForDisplay(value) {
@@ -425,7 +486,7 @@ async function refreshCloudData() {
   refreshInProgress = true;
   updateConnectionStatus('Eşitleniyor…');
   try {
-    // 1. Bekleyen yerel değişiklikleri göndermeyi dene
+    // 1. Önce bu cihazdaki bekleyen yerel değişiklikleri buluta gönder
     try { await flushSyncQueue(); } catch (e) { console.warn('flushSyncQueue warning:', e); }
 
     // 2. Buluttan verileri çek
@@ -459,18 +520,43 @@ async function refreshCloudData() {
     const remoteShoots = (shootResult.data || []).map(shootFromRow);
     const remoteReminders = (reminderResult.data || []).map(reminderFromRow);
 
-    const mergeAndUploadLocalOnly = async (table, localItems, remoteItems) => {
-      const remoteIds = new Set(remoteItems.map(item => item.id));
-      const localOnly = (localItems || []).filter(item => item && item.id && !remoteIds.has(item.id));
-      const merged = [...remoteItems, ...localOnly];
-      if (localOnly.length) {
-        try { await syncRows(table, localOnly); } catch (e) { console.warn('Yerel aktarım uyarısı:', e); }
+    // Kuyrukta henüz gönderilmemiş yerel çevrimdışı değişiklikler varsa onları belirle
+    const currentQueue = readSyncQueue().filter(q => q.userId === cloudUser.id);
+    const pendingShootUpserts = new Map();
+    const pendingShootDeletes = new Set();
+    const pendingReminderUpserts = new Map();
+    const pendingReminderDeletes = new Set();
+
+    for (const q of currentQueue) {
+      if (q.table === 'shoots') {
+        if (q.type === 'delete' || q.deleteId) pendingShootDeletes.add(q.deleteId);
+        else if (q.item) pendingShootUpserts.set(q.item.id, q.item);
+        else if (Array.isArray(q.items)) q.items.forEach(it => pendingShootUpserts.set(it.id, it));
+      } else if (q.table === 'reminders') {
+        if (q.type === 'delete' || q.deleteId) pendingReminderDeletes.add(q.deleteId);
+        else if (q.item) pendingReminderUpserts.set(q.item.id, q.item);
+        else if (Array.isArray(q.items)) q.items.forEach(it => pendingReminderUpserts.set(it.id, it));
       }
-      return merged;
+    }
+
+    // Bulut TEK DOĞRU KAYNAKTIR.
+    // Başka cihazda silinen şey burada tekrar hortlayamaz!
+    // Sadece bu cihazda yeni oluşturulup henüz internete gönderilememiş taslaklar korunur.
+    const mergeWithPending = (remoteItems, pendingUpserts, pendingDeletes) => {
+      const filtered = remoteItems.filter(item => !pendingDeletes.has(item.id));
+      const map = new Map(filtered.map(item => [item.id, item]));
+
+      for (const [id, localItem] of pendingUpserts) {
+        if (!pendingDeletes.has(id)) {
+          map.set(id, localItem);
+        }
+      }
+      return Array.from(map.values());
     };
 
-    tasks = await mergeAndUploadLocalOnly('shoots', tasks, remoteShoots);
-    reminders = await mergeAndUploadLocalOnly('reminders', reminders, remoteReminders);
+    tasks = mergeWithPending(remoteShoots, pendingShootUpserts, pendingShootDeletes);
+    reminders = mergeWithPending(remoteReminders, pendingReminderUpserts, pendingReminderDeletes);
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     localStorage.setItem('planim-animsaticilar-v1', JSON.stringify(reminders));
     render();
@@ -490,10 +576,17 @@ async function refreshCloudData() {
 }
 function subscribeToCloudChanges() {
   if (!cloud || !cloudUser) return;
-  if (realtimeChannel) cloud.removeChannel(realtimeChannel);
-  realtimeChannel = cloud.channel(`planim-${cloudUser.id}`)
-    .on('postgres_changes', { event:'*', schema:'public', table:'shoots', filter:`user_id=eq.${cloudUser.id}` }, scheduleCloudRefresh)
-    .on('postgres_changes', { event:'*', schema:'public', table:'reminders', filter:`user_id=eq.${cloudUser.id}` }, scheduleCloudRefresh)
+  if (realtimeChannel) {
+    try { cloud.removeChannel(realtimeChannel); } catch (e) {}
+    realtimeChannel = null;
+  }
+  realtimeChannel = cloud.channel(`planim-live-${cloudUser.id}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'shoots' }, () => {
+      scheduleCloudRefresh();
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'reminders' }, () => {
+      scheduleCloudRefresh();
+    })
     .subscribe();
 }
 function scheduleCloudRefresh() {
@@ -584,7 +677,9 @@ $('#authForm').addEventListener('submit', async (event) => {
 window.addEventListener('online', () => { updateConnectionStatus('Bağlantı geldi · eşitleniyor…'); flushSyncQueue().then(() => refreshCloudData()); });
 window.addEventListener('offline', () => updateConnectionStatus());
 window.addEventListener('focus', () => { if (cloudUser && navigator.onLine) { flushSyncQueue().then(() => refreshCloudData()); } });
+window.addEventListener('pageshow', () => { if (cloudUser && navigator.onLine) { flushSyncQueue().then(() => refreshCloudData()); } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cloudUser && navigator.onLine) { flushSyncQueue().then(() => refreshCloudData()); } });
+setInterval(() => { if (cloudUser && navigator.onLine && !document.hidden && !syncInProgress && !refreshInProgress) { refreshCloudData(); } }, 20000);
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Çevrimdışı uygulama önbelleği açılamadı:', error));
 updateConnectionStatus();
 
@@ -610,7 +705,7 @@ $('#reminderForm').addEventListener('submit', (event) => {
     createdAt: existing?.createdAt || Date.now()
   };
   reminders = existing ? reminders.map(item => item.id === id ? reminder : item) : [...reminders, reminder];
-  hideDialog(reminderDialog); saveReminders(); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
+  hideDialog(reminderDialog); saveReminders({ item: reminder }); notify(existing ? 'Anımsatıcı güncellendi.' : 'Anımsatıcı eklendi.');
 });
 $('#closeDialog').addEventListener('click', () => hideDialog(dialog));
 $('#cancelDialog').addEventListener('click', () => hideDialog(dialog));
@@ -630,7 +725,7 @@ $('#taskForm').addEventListener('submit', (event) => {
     platforms: existing?.platforms || {}, createdAt: existing?.createdAt || Date.now()
   };
   tasks = existing ? tasks.map(t => t.id === id ? task : t) : [...tasks, task];
-  hideDialog(dialog); saveTasks(); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
+  hideDialog(dialog); saveTasks({ item: task }); notify(existing ? 'Çekim bilgileri güncellendi.' : 'Yeni çekim planına eklendi.');
 });
 $('.tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-filter]'); if (!button) return;
@@ -649,7 +744,7 @@ rows.addEventListener('change', (event) => {
   const checkbox = event.target.closest('[data-complete]');
   if (!checkbox) return;
   const task = tasks.find(item => item.id === checkbox.dataset.complete);
-  if (task) { task.done = checkbox.checked; saveTasks(); }
+  if (task) { task.done = checkbox.checked; saveTasks({ item: task }); }
 });
 rows.addEventListener('click', (event) => {
   const detailButton = event.target.closest('[data-detail]');
@@ -660,7 +755,7 @@ rows.addEventListener('click', (event) => {
     return;
   }
   const reminderToggle = event.target.closest('[data-reminder-toggle]');
-  if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders(); } return; }
+  if (reminderToggle) { const reminder = reminders.find(item => item.id === reminderToggle.dataset.reminderToggle); if (reminder) { reminder.done = !reminder.done; saveReminders({ item: reminder }); } return; }
   const reminderEdit = event.target.closest('[data-reminder-edit]');
   if (reminderEdit) { openReminder(reminders.find(item => item.id === reminderEdit.dataset.reminderEdit)); return; }
   const reminderDelete = event.target.closest('[data-reminder-delete]');
@@ -674,14 +769,14 @@ rows.addEventListener('click', (event) => {
     const isNowShared = ['Instagram','LinkedIn','YouTube'].some(platform => task.platforms[platform]);
     if (isNowShared) { task.published = true; task.publishedDate ||= todayISO(); }
     else if (task.published) { task.published = false; task.publishedDate = ''; }
-    saveTasks(); notify(`${name} paylaşımı ${task.platforms[name] ? 'işaretlendi' : 'kaldırıldı'}.`); return;
+    saveTasks({ item: task }); notify(`${name} paylaşımı ${task.platforms[name] ? 'işaretlendi' : 'kaldırıldı'}.`); return;
   }
   const stageButton = event.target.closest('[data-stage]');
   if (stageButton) {
     const task = tasks.find(t => t.id === stageButton.dataset.id); const stage = stageButton.dataset.stage;
     task[stage] = !task[stage];
     if (stage === 'published') task.publishedDate = task.published ? (task.publishedDate || todayISO()) : '';
-    saveTasks(); notify(task[stage] ? `${stage === 'shot' ? 'Çekildi' : stage === 'edited' ? 'Montajlandı' : 'Paylaşıldı'} olarak işaretlendi.` : 'Aşama güncellendi.'); return;
+    saveTasks({ item: task }); notify(task[stage] ? `${stage === 'shot' ? 'Çekildi' : stage === 'edited' ? 'Montajlandı' : 'Paylaşıldı'} olarak işaretlendi.` : 'Aşama güncellendi.'); return;
   }
   const menuButton = event.target.closest('[data-menu]');
   if (menuButton) {
@@ -704,7 +799,7 @@ $('#reminderList').addEventListener('click', (event) => {
     return;
   }
   const toggle = event.target.closest('[data-reminder-toggle]');
-  if (toggle) { const reminder = reminders.find(item => item.id === toggle.dataset.reminderToggle); reminder.done = !reminder.done; saveReminders(); return; }
+  if (toggle) { const reminder = reminders.find(item => item.id === toggle.dataset.reminderToggle); reminder.done = !reminder.done; saveReminders({ item: reminder }); return; }
   const cal = event.target.closest('[data-reminder-cal]');
   if (cal) { const reminder = reminders.find(item => item.id === cal.dataset.reminderCal); if (reminder) { downloadReminderICS(reminder); notify('Takvim dosyası (.ics) indirildi.'); } return; }
   const edit = event.target.closest('[data-reminder-edit]');
@@ -793,7 +888,7 @@ $('#detailForm')?.addEventListener('submit', (event) => {
     const task = tasks.find(t => t.id === id);
     if (task) {
       task.caption = caption;
-      saveTasks();
+      saveTasks({ item: task });
       notify('Paylaşım metni kaydedildi.');
     }
   } else if (kind === 'reminder') {
@@ -801,7 +896,7 @@ $('#detailForm')?.addEventListener('submit', (event) => {
     if (reminder) {
       reminder.note = caption;
       reminder.caption = caption;
-      saveReminders();
+      saveReminders({ item: reminder });
       notify('Anımsatıcı ayrıntısı kaydedildi.');
     }
   }
