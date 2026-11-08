@@ -48,13 +48,12 @@
 .timeline-reminder .reminder-actions button:hover{color:#6e57d4}
 .reminder-kind{font-size:10px;color:#8b8983}
 table{width:100%;min-width:0;table-layout:auto;border-collapse:collapse}
-thead th:nth-child(1),tbody td:nth-child(1){width:20%}
-thead th:nth-child(2),tbody td:nth-child(2){width:11%;white-space:nowrap}
-thead th:nth-child(3),tbody td:nth-child(3){width:10%}
-thead th:nth-child(4),tbody td:nth-child(4){width:36%;min-width:310px}
-thead th:nth-child(5),tbody td:nth-child(5){width:36px;text-align:center}
-thead th:nth-child(6),tbody td:nth-child(6){width:8%;text-align:center}
-thead th:nth-child(7),tbody td:nth-child(7){width:auto;min-width:110px;text-align:right}
+thead th:nth-child(1),tbody td:nth-child(1){width:26%}
+thead th:nth-child(2),tbody td:nth-child(2){width:13%;white-space:nowrap}
+thead th:nth-child(3),tbody td:nth-child(3){width:40%;min-width:320px}
+thead th:nth-child(4),tbody td:nth-child(4){width:36px;text-align:center}
+thead th:nth-child(5),tbody td:nth-child(5){width:9%;text-align:center}
+thead th:nth-child(6),tbody td:nth-child(6){width:auto;min-width:110px;text-align:right}
 
 /* Çekim · Montaj · Paylaşım (Ferah ve esnek aşama kutuları) */
 .stage-grid{display:flex!important;align-items:center!important;gap:5px!important;width:100%!important;min-width:0!important}
@@ -585,12 +584,8 @@ html, body {
     font-size: 11px !important;
     margin-top: 1px !important;
   }
-  tr.timeline-shoot td.location-cell {
-    display: inline-block !important;
-    max-width: 100% !important;
-    font-size: 10px !important;
-  }
-  tr.timeline-shoot > td:nth-child(4) {
+  tr.timeline-shoot td.stages-cell,
+  tr.timeline-shoot > td:nth-child(3) {
     width: 100% !important;
     margin-top: 2px !important;
   }

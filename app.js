@@ -217,8 +217,7 @@ function taskRow(task) {
   return `<tr class="timeline-shoot ${task.done ? 'is-complete' : ''}">
     <td><div class="task-main"><span class="task-mark">✳</span><div><div class="task-name" title="${escapeHTML(task.title)}">${escapeHTML(task.title)}</div><div class="task-detail">${escapeHTML(task.details || 'Not eklenmedi')}</div></div></div></td>
     <td><div class="date-main">${dateValue(task.shootDate)}</div><div class="date-sub">${escapeHTML(task.shootTime || 'Saat belirtilmedi')}</div></td>
-    <td class="location-cell" title="${escapeHTML(task.location)}">${escapeHTML(task.location || 'Yer belirtilmedi')}</td>
-    <td>${progressHTML}</td>
+    <td class="stages-cell">${progressHTML}</td>
     <td class="completion-cell"><input type="checkbox" data-complete="${task.id}" aria-label="Tamamlandı olarak işaretle" ${task.done ? 'checked' : ''}></td>
     <td class="published-cell ${task.published ? 'is-published' : ''}">${task.published ? dateValue(task.publishedDate || todayISO()) : '<span>—</span>'}</td>
     <td class="row-actions">
@@ -237,8 +236,9 @@ function reminderRow(reminder) {
   const content = (reminder.note || reminder.caption || '').trim();
   const hasContent = !!content;
   return `<tr class="timeline-reminder ${reminder.done ? 'is-done' : ''}">
-    <td colspan="3"><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
+    <td><div class="task-main"><span class="reminder-mark">◷</span><div><div class="task-name">${escapeHTML(reminder.title)}</div><div class="task-detail">${escapeHTML(reminder.note || 'Anımsatıcı')}</div></div></div></td>
     <td><div class="date-main">${dateValue(reminder.date)}</div><div class="date-sub">${escapeHTML(reminder.time || 'Saat belirtilmedi')}</div></td>
+    <td></td>
     <td class="completion-cell"><button class="reminder-check" data-reminder-toggle="${reminder.id}" aria-label="${reminder.done ? 'Tamamlandı işaretini kaldır' : 'Tamamlandı olarak işaretle'}" aria-pressed="${!!reminder.done}">${reminder.done ? '✓' : ''}</button></td>
     <td colspan="2" class="reminder-actions-cell">
       <div class="reminder-actions">
@@ -266,7 +266,7 @@ function render() {
     if (!group || group.date !== event.date) { group = {date:event.date,events:[]}; groups.push(group); }
     group.events.push(event);
   }
-  rows.innerHTML = groups.map(group => `<tr class="day-divider"><td colspan="7"><div class="day-label"><strong>${escapeHTML(dayLabel(group.date))}</strong><span>${group.events.length} kayıt</span></div></td></tr>` + group.events.map(event => event.kind === 'shoot' ? taskRow(event.item) : reminderRow(event.item)).join('')).join('');
+  rows.innerHTML = groups.map(group => `<tr class="day-divider"><td colspan="6"><div class="day-label"><strong>${escapeHTML(dayLabel(group.date))}</strong><span>${group.events.length} kayıt</span></div></td></tr>` + group.events.map(event => event.kind === 'shoot' ? taskRow(event.item) : reminderRow(event.item)).join('')).join('');
   const hasVisible = events.length > 0;
   $('.table-wrap').style.display = hasVisible ? '' : 'none';
   $('#emptyState').style.display = hasVisible ? 'none' : 'block';
